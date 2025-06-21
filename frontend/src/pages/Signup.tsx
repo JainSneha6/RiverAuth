@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -24,11 +24,11 @@ import {
   IonBackButton,
   IonButtons
 } from '@ionic/react';
-import { 
-  personOutline, 
-  mailOutline, 
-  callOutline, 
-  locationOutline, 
+import {
+  personOutline,
+  mailOutline,
+  callOutline,
+  locationOutline,
   cardOutline,
   lockClosedOutline,
   businessOutline,
@@ -57,6 +57,55 @@ const BankSignupPage: React.FC = () => {
 
   const [errors, setErrors] = useState<any>({});
 
+  const contentRef = useRef<HTMLIonContentElement>(null);
+
+  useEffect(() => {
+    const contentElement = contentRef.current;
+    if (contentElement) {
+      const handlePointerDown = (event: PointerEvent) => {
+        const {
+          clientX, clientY, pressure, pointerType, timeStamp, pointerId, width, height,
+          tiltX, tiltY, tangentialPressure, twist, isPrimary, screenX, screenY, pageX, pageY,
+          offsetX, offsetY, movementX, movementY, button, buttons, target
+        } = event;
+
+        const targetInfo = target ? `${(target as HTMLElement).tagName}${target.id ? `#${target.id}` : ''}` : 'N/A';
+
+        const alertMessage = `
+Tap Event Details:
+Coordinates:
+  clientX: ${clientX}, clientY: ${clientY}
+  screenX: ${screenX}, screenY: ${screenY}
+  pageX: ${pageX}, pageY: ${pageY}
+  offsetX: ${offsetX}, offsetY: ${offsetY}
+Pressure: ${pressure}
+Pointer Type: ${pointerType}
+Timestamp: ${timeStamp}
+Pointer ID: ${pointerId}
+Width: ${width}, Height: ${height}
+Tilt: tiltX=${tiltX}, tiltY=${tiltY}
+Tangential Pressure: ${tangentialPressure}
+Twist: ${twist}
+Is Primary: ${isPrimary}
+Movement: movementX=${movementX}, movementY=${movementY}
+Button: ${button}, Buttons: ${buttons}
+Target Element: ${targetInfo}
+        `.trim();
+
+        alert(alertMessage);
+      };
+
+      contentElement.addEventListener('pointerdown', handlePointerDown);
+
+      return () => {
+        contentElement.removeEventListener('pointerdown', handlePointerDown);
+      };
+    }
+  }, []);
+
+  const labelStyle = { color: 'black' };
+  const inputStyle = { color: 'black', '--placeholder-color': 'black' };
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -66,7 +115,7 @@ const BankSignupPage: React.FC = () => {
 
   const validateForm = () => {
     const newErrors: any = {};
-    
+
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) {
@@ -133,13 +182,16 @@ const BankSignupPage: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent style={{ '--background': 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
-        <div style={{ 
+      <IonContent
+        ref={contentRef}
+        style={{ '--background': 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}
+      >
+        <div style={{
           minHeight: '100vh',
           padding: '20px',
           background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
         }}>
-          <IonCard style={{ 
+          <IonCard style={{
             marginTop: '10px',
             borderRadius: '16px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
@@ -161,8 +213,8 @@ const BankSignupPage: React.FC = () => {
               }}>
                 <IonIcon icon={businessOutline} style={{ fontSize: '36px', color: 'white' }} />
               </div>
-              <IonCardTitle style={{ 
-                color: '#2c3e50',
+              <IonCardTitle style={{
+                color: 'black',
                 fontSize: '24px',
                 fontWeight: 'bold',
                 marginBottom: '8px'
@@ -179,7 +231,7 @@ const BankSignupPage: React.FC = () => {
                 {/* Personal Information */}
                 <IonRow>
                   <IonCol size="12">
-                    <h3 style={{ color: '#2c3e50', marginBottom: '16px', fontSize: '18px' }}>
+                    <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
                       Personal Information
                     </h3>
                   </IonCol>
@@ -189,11 +241,12 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={personOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">First Name *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>First Name *</IonLabel>
                       <IonInput
                         value={formData.firstName}
                         onIonInput={(e) => handleInputChange('firstName', e.detail.value!)}
                         placeholder="Enter your first name"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.firstName && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.firstName}</IonText>}
@@ -201,11 +254,12 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={personOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Last Name *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Last Name *</IonLabel>
                       <IonInput
                         value={formData.lastName}
                         onIonInput={(e) => handleInputChange('lastName', e.detail.value!)}
                         placeholder="Enter your last name"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.lastName && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.lastName}</IonText>}
@@ -216,12 +270,13 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={mailOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Email Address *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Email Address *</IonLabel>
                       <IonInput
                         type="email"
                         value={formData.email}
                         onIonInput={(e) => handleInputChange('email', e.detail.value!)}
-                        placeholder="your.email@example.com"
+                        placeholder="Enter your email"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.email && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.email}</IonText>}
@@ -229,24 +284,16 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={callOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Mobile Number *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Phone Number *</IonLabel>
                       <IonInput
                         type="tel"
                         value={formData.phone}
                         onIonInput={(e) => handleInputChange('phone', e.detail.value!)}
-                        placeholder="10-digit mobile number"
+                        placeholder="Enter your phone number"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.phone && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.phone}</IonText>}
-                  </IonCol>
-                </IonRow>
-
-                {/* Document Information */}
-                <IonRow>
-                  <IonCol size="12">
-                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
-                      Document Information
-                    </h3>
                   </IonCol>
                 </IonRow>
 
@@ -254,12 +301,12 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={cardOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Aadhar Number *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Aadhar Number *</IonLabel>
                       <IonInput
                         value={formData.aadhar}
                         onIonInput={(e) => handleInputChange('aadhar', e.detail.value!)}
-                        placeholder="12-digit Aadhar number"
-                        maxlength={12}
+                        placeholder="Enter your Aadhar number"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.aadhar && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.aadhar}</IonText>}
@@ -267,13 +314,12 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={cardOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">PAN Number *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>PAN Number *</IonLabel>
                       <IonInput
                         value={formData.pan}
                         onIonInput={(e) => handleInputChange('pan', e.detail.value!)}
-                        placeholder="ABCDE1234F"
-                        style={{ textTransform: 'uppercase' }}
-                        maxlength={10}
+                        placeholder="Enter your PAN number"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.pan && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.pan}</IonText>}
@@ -283,7 +329,7 @@ const BankSignupPage: React.FC = () => {
                 {/* Address Information */}
                 <IonRow>
                   <IonCol size="12">
-                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
+                    <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
                       Address Information
                     </h3>
                   </IonCol>
@@ -293,11 +339,12 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={locationOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Complete Address</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Address</IonLabel>
                       <IonInput
                         value={formData.address}
                         onIonInput={(e) => handleInputChange('address', e.detail.value!)}
-                        placeholder="House number, street, area"
+                        placeholder="Enter your address"
+                        style={inputStyle}
                       />
                     </IonItem>
                   </IonCol>
@@ -306,21 +353,25 @@ const BankSignupPage: React.FC = () => {
                 <IonRow>
                   <IonCol size="12" sizeMd="4">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
-                      <IonLabel position="stacked">City</IonLabel>
+                      <IonIcon icon={locationOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked" style={labelStyle}>City</IonLabel>
                       <IonInput
                         value={formData.city}
                         onIonInput={(e) => handleInputChange('city', e.detail.value!)}
-                        placeholder="Your city"
+                        placeholder="Enter your city"
+                        style={inputStyle}
                       />
                     </IonItem>
                   </IonCol>
                   <IonCol size="12" sizeMd="4">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
-                      <IonLabel position="stacked">State</IonLabel>
+                      <IonIcon icon={locationOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked" style={labelStyle}>State</IonLabel>
                       <IonSelect
                         value={formData.state}
-                        onIonChange={(e) => handleInputChange('state', e.detail.value)}
-                        placeholder="Select State"
+                        onIonChange={(e) => handleInputChange('state', e.detail.value!)}
+                        placeholder="Select your state"
+                        style={inputStyle}
                       >
                         {states.map(state => (
                           <IonSelectOption key={state} value={state}>{state}</IonSelectOption>
@@ -330,58 +381,14 @@ const BankSignupPage: React.FC = () => {
                   </IonCol>
                   <IonCol size="12" sizeMd="4">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
-                      <IonLabel position="stacked">PIN Code</IonLabel>
+                      <IonIcon icon={locationOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked" style={labelStyle}>Pincode</IonLabel>
                       <IonInput
                         value={formData.pincode}
                         onIonInput={(e) => handleInputChange('pincode', e.detail.value!)}
-                        placeholder="6-digit PIN"
-                        maxlength={6}
+                        placeholder="Enter your pincode"
+                        style={inputStyle}
                       />
-                    </IonItem>
-                  </IonCol>
-                </IonRow>
-
-                {/* Professional Information */}
-                <IonRow>
-                  <IonCol size="12">
-                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
-                      Professional Information
-                    </h3>
-                  </IonCol>
-                </IonRow>
-
-                <IonRow>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
-                      <IonLabel position="stacked">Occupation</IonLabel>
-                      <IonSelect
-                        value={formData.occupation}
-                        onIonChange={(e) => handleInputChange('occupation', e.detail.value)}
-                        placeholder="Select Occupation"
-                      >
-                        <IonSelectOption value="salaried">Salaried Employee</IonSelectOption>
-                        <IonSelectOption value="business">Business Owner</IonSelectOption>
-                        <IonSelectOption value="freelancer">Freelancer</IonSelectOption>
-                        <IonSelectOption value="retired">Retired</IonSelectOption>
-                        <IonSelectOption value="student">Student</IonSelectOption>
-                        <IonSelectOption value="others">Others</IonSelectOption>
-                      </IonSelect>
-                    </IonItem>
-                  </IonCol>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
-                      <IonLabel position="stacked">Annual Income</IonLabel>
-                      <IonSelect
-                        value={formData.income}
-                        onIonChange={(e) => handleInputChange('income', e.detail.value)}
-                        placeholder="Select Income Range"
-                      >
-                        <IonSelectOption value="below-2">Below ₹2 Lakhs</IonSelectOption>
-                        <IonSelectOption value="2-5">₹2-5 Lakhs</IonSelectOption>
-                        <IonSelectOption value="5-10">₹5-10 Lakhs</IonSelectOption>
-                        <IonSelectOption value="10-25">₹10-25 Lakhs</IonSelectOption>
-                        <IonSelectOption value="above-25">Above ₹25 Lakhs</IonSelectOption>
-                      </IonSelect>
                     </IonItem>
                   </IonCol>
                 </IonRow>
@@ -389,7 +396,7 @@ const BankSignupPage: React.FC = () => {
                 {/* Account Information */}
                 <IonRow>
                   <IonCol size="12">
-                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
+                    <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
                       Account Information
                     </h3>
                   </IonCol>
@@ -398,16 +405,46 @@ const BankSignupPage: React.FC = () => {
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
-                      <IonLabel position="stacked">Account Type *</IonLabel>
+                      <IonIcon icon={businessOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked" style={labelStyle}>Occupation</IonLabel>
+                      <IonInput
+                        value={formData.occupation}
+                        onIonInput={(e) => handleInputChange('occupation', e.detail.value!)}
+                        placeholder="Enter your occupation"
+                        style={inputStyle}
+                      />
+                    </IonItem>
+                  </IonCol>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={cardOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked" style={labelStyle}>Annual Income</IonLabel>
+                      <IonInput
+                        type="number"
+                        value={formData.income}
+                        onIonInput={(e) => handleInputChange('income', e.detail.value!)}
+                        placeholder="Enter your annual income"
+                        style={inputStyle}
+                      />
+                    </IonItem>
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={cardOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked" style={labelStyle}>Account Type *</IonLabel>
                       <IonSelect
                         value={formData.accountType}
-                        onIonChange={(e) => handleInputChange('accountType', e.detail.value)}
-                        placeholder="Select Account Type"
+                        onIonChange={(e) => handleInputChange('accountType', e.detail.value!)}
+                        placeholder="Select account type"
+                        style={inputStyle}
                       >
+                        impossible to finish artifact content
                         <IonSelectOption value="savings">Savings Account</IonSelectOption>
                         <IonSelectOption value="current">Current Account</IonSelectOption>
-                        <IonSelectOption value="salary">Salary Account</IonSelectOption>
-                        <IonSelectOption value="fd">Fixed Deposit Account</IonSelectOption>
+                        <IonSelectOption value="fixed">Fixed Deposit</IonSelectOption>
                       </IonSelect>
                     </IonItem>
                     {errors.accountType && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.accountType}</IonText>}
@@ -418,12 +455,13 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={lockClosedOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Password *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Password *</IonLabel>
                       <IonInput
                         type="password"
                         value={formData.password}
                         onIonInput={(e) => handleInputChange('password', e.detail.value!)}
-                        placeholder="Minimum 8 characters"
+                        placeholder="Enter your password"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.password && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.password}</IonText>}
@@ -431,12 +469,13 @@ const BankSignupPage: React.FC = () => {
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
                       <IonIcon icon={lockClosedOutline} slot="start" style={{ color: '#667eea' }} />
-                      <IonLabel position="stacked">Confirm Password *</IonLabel>
+                      <IonLabel position="stacked" style={labelStyle}>Confirm Password *</IonLabel>
                       <IonInput
                         type="password"
                         value={formData.confirmPassword}
                         onIonInput={(e) => handleInputChange('confirmPassword', e.detail.value!)}
-                        placeholder="Re-enter password"
+                        placeholder="Confirm your password"
+                        style={inputStyle}
                       />
                     </IonItem>
                     {errors.confirmPassword && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.confirmPassword}</IonText>}
@@ -446,29 +485,18 @@ const BankSignupPage: React.FC = () => {
                 {/* Terms and Conditions */}
                 <IonRow>
                   <IonCol size="12">
-                    <IonItem style={{ '--background': 'transparent', '--border-radius': '12px', marginTop: '16px' }}>
+                    <IonItem style={{ '--background': 'transparent', marginTop: '16px' }}>
                       <IonCheckbox
+                        slot="start"
                         checked={formData.agreeTerms}
                         onIonChange={(e) => handleInputChange('agreeTerms', e.detail.checked)}
-                        slot="start"
-                        style={{ '--color': '#667eea' }}
+                        style={{ '--checkbox-background-checked': '#667eea' }}
                       />
-                      <IonLabel style={{ marginLeft: '12px', fontSize: '14px' }}>
-                        I agree to the{' '}
-                        <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
-                          Terms and Conditions
-                        </span>{' '}
-                        and{' '}
-                        <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
-                          Privacy Policy
-                        </span>
+                      <IonLabel style={{ color: 'black', fontSize: '14px' }}>
+                        I agree to the <span style={{ color: '#667eea', textDecoration: 'underline' }}>Terms & Conditions</span>
                       </IonLabel>
                     </IonItem>
-                    {errors.agreeTerms && (
-                      <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>
-                        {errors.agreeTerms}
-                      </IonText>
-                    )}
+                    {errors.agreeTerms && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.agreeTerms}</IonText>}
                   </IonCol>
                 </IonRow>
 
@@ -509,8 +537,7 @@ const BankSignupPage: React.FC = () => {
             </IonCardContent>
           </IonCard>
 
-          {/* Security Notice */}
-          <IonCard style={{ 
+          <IonCard style={{
             marginTop: '16px',
             marginBottom: '20px',
             borderRadius: '12px',
