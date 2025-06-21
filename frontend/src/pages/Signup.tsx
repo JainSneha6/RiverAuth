@@ -34,6 +34,10 @@ import {
   businessOutline,
   chevronBackOutline
 } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Keyboard } from '@capacitor/keyboard';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 const BankSignupPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -60,9 +64,23 @@ const BankSignupPage: React.FC = () => {
   const contentRef = useRef<HTMLIonContentElement>(null);
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setStyle({ style: Style.Dark });
+      StatusBar.setBackgroundColor({ color: '#667eea' });
+    }
+
+    if (Capacitor.isNativePlatform()) {
+      Keyboard.setAccessoryBarVisible({ isVisible: true });
+      Keyboard.addListener('keyboardWillShow', () => {
+        if (contentRef.current) {
+          contentRef.current.scrollToBottom(300);
+        }
+      });
+    }
+
     const contentElement = contentRef.current;
     if (contentElement) {
-      const handlePointerDown = (event: PointerEvent) => {
+      const handlePointerEvent = (event: PointerEvent) => {
         const {
           clientX, clientY, pressure, pointerType, timeStamp, pointerId, width, height,
           tiltX, tiltY, tangentialPressure, twist, isPrimary, screenX, screenY, pageX, pageY,
@@ -71,8 +89,12 @@ const BankSignupPage: React.FC = () => {
 
         const targetInfo = target ? `${(target as HTMLElement).tagName}${target.id ? `#${target.id}` : ''}` : 'N/A';
 
-        const alertMessage = `
-Tap Event Details:
+        const eventType = event.type === 'pointerdown' ? 'Touch Down' :
+          event.type === 'pointerup' ? 'Touch Up' :
+            'Touch Move';
+
+        const logMessage = `
+${eventType} Event Details:
 Coordinates:
   clientX: ${clientX}, clientY: ${clientY}
   screenX: ${screenX}, screenY: ${screenY}
@@ -92,13 +114,17 @@ Button: ${button}, Buttons: ${buttons}
 Target Element: ${targetInfo}
         `.trim();
 
-        alert(alertMessage);
+        console.log(logMessage);
       };
 
-      contentElement.addEventListener('pointerdown', handlePointerDown);
+      contentElement.addEventListener('pointerdown', handlePointerEvent);
+      contentElement.addEventListener('pointerup', handlePointerEvent);
+      contentElement.addEventListener('pointermove', handlePointerEvent);
 
       return () => {
-        contentElement.removeEventListener('pointerdown', handlePointerDown);
+        contentElement.removeEventListener('pointerdown', handlePointerEvent);
+        contentElement.removeEventListener('pointerup', handlePointerEvent);
+        contentElement.removeEventListener('pointermove', handlePointerEvent);
       };
     }
   }, []);
@@ -155,10 +181,13 @@ Target Element: ${targetInfo}
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
       console.log('Form submitted:', formData);
-      alert('Account registration successful! You will receive a confirmation email shortly.');
+      if (Capacitor.isNativePlatform()) {
+        await Haptics.impact({ style: ImpactStyle.Medium });
+      }
+      console.log('Success: Account registration successful! You will receive a confirmation email shortly.');
     }
   };
 
@@ -228,7 +257,6 @@ Target Element: ${targetInfo}
 
             <IonCardContent>
               <IonGrid>
-                {/* Personal Information */}
                 <IonRow>
                   <IonCol size="12">
                     <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
@@ -326,7 +354,6 @@ Target Element: ${targetInfo}
                   </IonCol>
                 </IonRow>
 
-                {/* Address Information */}
                 <IonRow>
                   <IonCol size="12">
                     <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
@@ -393,7 +420,6 @@ Target Element: ${targetInfo}
                   </IonCol>
                 </IonRow>
 
-                {/* Account Information */}
                 <IonRow>
                   <IonCol size="12">
                     <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
@@ -441,7 +467,6 @@ Target Element: ${targetInfo}
                         placeholder="Select account type"
                         style={inputStyle}
                       >
-                        impossible to finish artifact content
                         <IonSelectOption value="savings">Savings Account</IonSelectOption>
                         <IonSelectOption value="current">Current Account</IonSelectOption>
                         <IonSelectOption value="fixed">Fixed Deposit</IonSelectOption>
@@ -482,7 +507,6 @@ Target Element: ${targetInfo}
                   </IonCol>
                 </IonRow>
 
-                {/* Terms and Conditions */}
                 <IonRow>
                   <IonCol size="12">
                     <IonItem style={{ '--background': 'transparent', marginTop: '16px' }}>
@@ -500,7 +524,6 @@ Target Element: ${targetInfo}
                   </IonCol>
                 </IonRow>
 
-                {/* Submit Button */}
                 <IonRow>
                   <IonCol size="12">
                     <IonButton
@@ -525,7 +548,7 @@ Target Element: ${targetInfo}
 
                 <IonRow>
                   <IonCol size="12" style={{ textAlign: 'center', marginTop: '16px' }}>
-                    <IonText style={{ fontSize: '14px', color: '#7f8c8d' }}>
+                    <IonText style={{ color: '#7f8c8d', fontSize: '14px' }}>
                       Already have an account?{' '}
                       <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
                         Sign In
@@ -545,7 +568,7 @@ Target Element: ${targetInfo}
             border: '1px solid rgba(102, 126, 234, 0.2)'
           }}>
             <IonCardContent style={{ padding: '16px', textAlign: 'center' }}>
-              <IonText style={{ fontSize: '12px', color: '#7f8c8d', lineHeight: '1.5' }}>
+              <IonText style={{ color: '#7f8c8d', fontSize: '12px', lineHeight: '1.5' }}>
                 🔒 Your information is secure and encrypted. We follow RBI guidelines and use bank-grade security to protect your data.
               </IonText>
             </IonCardContent>
