@@ -1,353 +1,380 @@
 import React, { useState } from 'react';
 import {
-  IonApp,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
-  IonCard,
-  IonCardHeader,
-  IonCardTitle,
-  IonCardSubtitle,
-  IonCardContent,
-  IonGrid,
-  IonRow,
-  IonCol,
+  IonHeader,
+  IonPage,
+  IonTitle,
+  IonToolbar,
   IonItem,
   IonLabel,
   IonInput,
+  IonButton,
+  IonCard,
+  IonCardContent,
+  IonCardHeader,
+  IonCardTitle,
   IonSelect,
   IonSelectOption,
-  IonButton,
-  IonIcon,
   IonCheckbox,
-  IonToast,
-  IonDatetime,
+  IonIcon,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonText,
+  IonBackButton,
+  IonButtons
 } from '@ionic/react';
-import { mailOutline, callOutline, eyeOutline, eyeOffOutline, shieldCheckmarkOutline, personOutline, cardOutline, homeOutline, briefcaseOutline } from 'ionicons/icons';
+import { 
+  personOutline, 
+  mailOutline, 
+  callOutline, 
+  locationOutline, 
+  cardOutline,
+  lockClosedOutline,
+  businessOutline,
+  chevronBackOutline
+} from 'ionicons/icons';
 
-type FormData = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  gender: string;
-  aadharNumber: string;
-  panNumber: string;
-  address: string;
-  city: string;
-  pincode: string;
-  state: string;
-  occupation: string;
-  annualIncome: string;
-  accountType: string;
-  password: string;
-  confirmPassword: string;
-  agreeTerms: boolean;
-  agreeMarketing: boolean;
-};
-
-const BankSignupPage = () => {
-  const [formData, setFormData] = useState<FormData>({
+const BankSignupPage: React.FC = () => {
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
-    dateOfBirth: '',
-    gender: '',
-    aadharNumber: '',
-    panNumber: '',
+    aadhar: '',
+    pan: '',
     address: '',
     city: '',
-    pincode: '',
     state: '',
+    pincode: '',
     occupation: '',
-    annualIncome: '',
+    income: '',
     accountType: '',
     password: '',
     confirmPassword: '',
-    agreeTerms: false,
-    agreeMarketing: false,
+    agreeTerms: false
   });
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [errors, setErrors] = useState<any>({});
 
-  const indianStates = [
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev: any) => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: any = {};
+    
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phone)) {
+      newErrors.phone = 'Phone number must be 10 digits';
+    }
+    if (!formData.aadhar.trim()) {
+      newErrors.aadhar = 'Aadhar number is required';
+    } else if (!/^\d{12}$/.test(formData.aadhar)) {
+      newErrors.aadhar = 'Aadhar number must be 12 digits';
+    }
+    if (!formData.pan.trim()) {
+      newErrors.pan = 'PAN number is required';
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan)) {
+      newErrors.pan = 'Invalid PAN format';
+    }
+    if (!formData.accountType) newErrors.accountType = 'Account type is required';
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    if (!formData.agreeTerms) {
+      newErrors.agreeTerms = 'You must agree to the terms and conditions';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (validateForm()) {
+      console.log('Form submitted:', formData);
+      alert('Account registration successful! You will receive a confirmation email shortly.');
+    }
+  };
+
+  const states = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
     'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
     'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
     'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
     'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Puducherry'
   ];
 
-  const handleInputChange = (field: keyof FormData, value: string | boolean | string[]) => {
-    setFormData({ ...formData, [field]: value });
-  };
-
-  const handleSubmit = () => {
-    const requiredFields: (keyof FormData)[] = [
-      'firstName', 'lastName', 'email', 'phone', 'password', 'confirmPassword', 'agreeTerms',
-    ];
-    const missingFields = requiredFields.filter(field => !formData[field]);
-    
-    if (missingFields.length > 0) {
-      setToastMessage('Please fill in all required fields.');
-      setShowToast(true);
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      setToastMessage('Passwords do not match.');
-      setShowToast(true);
-      return;
-    }
-
-    if (!formData.agreeTerms) {
-      setToastMessage('You must agree to the Terms & Conditions.');
-      setShowToast(true);
-      return;
-    }
-
-    setToastMessage('Account created successfully!');
-    setShowToast(true);
-    console.log('Form submitted:', formData);
-  };
-
   return (
-    <IonApp>
+    <IonPage>
       <IonHeader>
-        <IonToolbar className="bg-gradient-to-r from-blue-600 to-purple-700 shadow-lg">
-          <IonTitle className="text-white font-bold text-xl text-center">RiverAuth</IonTitle>
+        <IonToolbar style={{ '--background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          <IonButtons slot="start">
+            <IonBackButton defaultHref="/" icon={chevronBackOutline} />
+          </IonButtons>
+          <IonTitle style={{ color: 'white', fontWeight: 'bold' }}>Create Account</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent className="ion-padding bg-gradient-to-br from-slate-50 to-blue-50">
-        <div className="text-center mb-8 pt-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-700 rounded-full mb-4 shadow-lg">
-            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to RiverAuth</h1>
-          <p className="text-gray-600 text-lg">India's Most Trusted Digital Banking Platform</p>
-          <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-700 mx-auto mt-3 rounded-full"></div>
-        </div>
 
-        <IonCard className="max-w-4xl mx-auto rounded-3xl shadow-2xl">
-          <IonCardHeader className="bg-gradient-to-r from-blue-600 to-purple-700 text-center">
-            <IonCardTitle className="text-2xl font-bold text-white mb-2">Create Your Account</IonCardTitle>
-            <IonCardSubtitle className="text-blue-100">Join millions of Indians banking digitally</IonCardSubtitle>
-          </IonCardHeader>
-          <IonCardContent className="space-y-6">
-            {/* Personal Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <IonIcon icon={personOutline} className="w-5 h-5 mr-2 text-blue-600" />
-                Personal Information
-              </h3>
+      <IonContent style={{ '--background': 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
+        <div style={{ 
+          minHeight: '100vh',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+        }}>
+          <IonCard style={{ 
+            marginTop: '10px',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <IonCardHeader style={{ textAlign: 'center', paddingBottom: '10px' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '50%',
+                margin: '0 auto 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)'
+              }}>
+                <IonIcon icon={businessOutline} style={{ fontSize: '36px', color: 'white' }} />
+              </div>
+              <IonCardTitle style={{ 
+                color: '#2c3e50',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                marginBottom: '8px'
+              }}>
+                Open Your Bank Account
+              </IonCardTitle>
+              <IonText style={{ color: '#7f8c8d', fontSize: '14px' }}>
+                Join millions of Indians banking with trust and security
+              </IonText>
+            </IonCardHeader>
+
+            <IonCardContent>
               <IonGrid>
-                <IonRow>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
-                      <IonInput
-                        placeholder="First Name *"
-                        value={formData.firstName}
-                        onIonChange={(e) => handleInputChange('firstName', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
-                      />
-                    </IonItem>
-                  </IonCol>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
-                      <IonInput
-                        placeholder="Last Name *"
-                        value={formData.lastName}
-                        onIonChange={(e) => handleInputChange('lastName', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
-                      />
-                    </IonItem>
-                  </IonCol>
-                </IonRow>
+                {/* Personal Information */}
                 <IonRow>
                   <IonCol size="12">
-                    <IonItem>
-                      <IonIcon icon={mailOutline} slot="start" className="text-blue-600" />
+                    <h3 style={{ color: '#2c3e50', marginBottom: '16px', fontSize: '18px' }}>
+                      Personal Information
+                    </h3>
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={personOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">First Name *</IonLabel>
+                      <IonInput
+                        value={formData.firstName}
+                        onIonInput={(e) => handleInputChange('firstName', e.detail.value!)}
+                        placeholder="Enter your first name"
+                      />
+                    </IonItem>
+                    {errors.firstName && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.firstName}</IonText>}
+                  </IonCol>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={personOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Last Name *</IonLabel>
+                      <IonInput
+                        value={formData.lastName}
+                        onIonInput={(e) => handleInputChange('lastName', e.detail.value!)}
+                        placeholder="Enter your last name"
+                      />
+                    </IonItem>
+                    {errors.lastName && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.lastName}</IonText>}
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={mailOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Email Address *</IonLabel>
                       <IonInput
                         type="email"
-                        placeholder="Email Address *"
                         value={formData.email}
-                        onIonChange={(e) => handleInputChange('email', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
+                        onIonInput={(e) => handleInputChange('email', e.detail.value!)}
+                        placeholder="your.email@example.com"
                       />
                     </IonItem>
+                    {errors.email && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.email}</IonText>}
                   </IonCol>
-                </IonRow>
-                <IonRow>
-                  <IonCol size="12">
-                    <IonItem>
-                      <IonIcon icon={callOutline} slot="start" className="text-blue-600" />
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={callOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Mobile Number *</IonLabel>
                       <IonInput
                         type="tel"
-                        placeholder="Mobile Number *"
                         value={formData.phone}
-                        onIonChange={(e) => handleInputChange('phone', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
+                        onIonInput={(e) => handleInputChange('phone', e.detail.value!)}
+                        placeholder="10-digit mobile number"
                       />
                     </IonItem>
+                    {errors.phone && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.phone}</IonText>}
                   </IonCol>
                 </IonRow>
-                <IonRow>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
-                      <IonLabel>Date of Birth</IonLabel>
-                      <IonDatetime
-                        value={formData.dateOfBirth}
-                        onIonChange={(e) => handleInputChange('dateOfBirth', e.detail.value!)}
-                        className="text-gray-900"
-                      />
-                    </IonItem>
-                  </IonCol>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
-                      <IonSelect
-                        value={formData.gender}
-                        onIonChange={(e) => handleInputChange('gender', e.detail.value)}
-                        placeholder="Select Gender"
-                        className="text-gray-900"
-                      >
-                        <IonSelectOption value="male">Male</IonSelectOption>
-                        <IonSelectOption value="female">Female</IonSelectOption>
-                        <IonSelectOption value="other">Other</IonSelectOption>
-                      </IonSelect>
-                    </IonItem>
-                  </IonCol>
-                </IonRow>
-              </IonGrid>
-            </div>
 
-            {/* Identity Verification */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <IonIcon icon={cardOutline} className="w-5 h-5 mr-2 text-blue-600" />
-                Identity Verification
-              </h3>
-              <IonGrid>
+                {/* Document Information */}
+                <IonRow>
+                  <IonCol size="12">
+                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
+                      Document Information
+                    </h3>
+                  </IonCol>
+                </IonRow>
+
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
-                    <IonItem>
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={cardOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Aadhar Number *</IonLabel>
                       <IonInput
-                        placeholder="Aadhar Number"
-                        value={formData.aadharNumber}
-                        onIonChange={(e) => handleInputChange('aadharNumber', e.detail.value!)}
+                        value={formData.aadhar}
+                        onIonInput={(e) => handleInputChange('aadhar', e.detail.value!)}
+                        placeholder="12-digit Aadhar number"
                         maxlength={12}
-                        className="text-gray-900 placeholder-gray-500"
                       />
                     </IonItem>
+                    {errors.aadhar && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.aadhar}</IonText>}
                   </IonCol>
                   <IonCol size="12" sizeMd="6">
-                    <IonItem>
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={cardOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">PAN Number *</IonLabel>
                       <IonInput
-                        placeholder="PAN Number"
-                        value={formData.panNumber}
-                        onIonChange={(e) => handleInputChange('panNumber', e.detail.value!)}
+                        value={formData.pan}
+                        onIonInput={(e) => handleInputChange('pan', e.detail.value!)}
+                        placeholder="ABCDE1234F"
+                        style={{ textTransform: 'uppercase' }}
                         maxlength={10}
-                        className="text-gray-900 placeholder-gray-500"
                       />
                     </IonItem>
+                    {errors.pan && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.pan}</IonText>}
                   </IonCol>
                 </IonRow>
-              </IonGrid>
-            </div>
 
-            {/* Address Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <IonIcon icon={homeOutline} className="w-5 h-5 mr-2 text-blue-600" />
-                Address Details
-              </h3>
-              <IonGrid>
+                {/* Address Information */}
                 <IonRow>
                   <IonCol size="12">
-                    <IonItem>
+                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
+                      Address Information
+                    </h3>
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={locationOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Complete Address</IonLabel>
                       <IonInput
-                        placeholder="Full Address"
                         value={formData.address}
-                        onIonChange={(e) => handleInputChange('address', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
+                        onIonInput={(e) => handleInputChange('address', e.detail.value!)}
+                        placeholder="House number, street, area"
                       />
                     </IonItem>
                   </IonCol>
                 </IonRow>
+
                 <IonRow>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
+                  <IonCol size="12" sizeMd="4">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonLabel position="stacked">City</IonLabel>
                       <IonInput
-                        placeholder="City"
                         value={formData.city}
-                        onIonChange={(e) => handleInputChange('city', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
+                        onIonInput={(e) => handleInputChange('city', e.detail.value!)}
+                        placeholder="Your city"
                       />
                     </IonItem>
                   </IonCol>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
-                      <IonInput
-                        placeholder="Pin Code"
-                        value={formData.pincode}
-                        onIonChange={(e) => handleInputChange('pincode', e.detail.value!)}
-                        maxlength={6}
-                        className="text-gray-900 placeholder-gray-500"
-                      />
-                    </IonItem>
-                  </IonCol>
-                </IonRow>
-                <IonRow>
-                  <IonCol size="12">
-                    <IonItem>
+                  <IonCol size="12" sizeMd="4">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonLabel position="stacked">State</IonLabel>
                       <IonSelect
                         value={formData.state}
                         onIonChange={(e) => handleInputChange('state', e.detail.value)}
                         placeholder="Select State"
-                        className="text-gray-900"
                       >
-                        {indianStates.map(state => (
+                        {states.map(state => (
                           <IonSelectOption key={state} value={state}>{state}</IonSelectOption>
                         ))}
                       </IonSelect>
                     </IonItem>
                   </IonCol>
-                </IonRow>
-              </IonGrid>
-            </div>
-
-            {/* Professional Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                <IonIcon icon={briefcaseOutline} className="w-5 h-5 mr-2 text-blue-600" />
-                Professional Details
-              </h3>
-              <IonGrid>
-                <IonRow>
-                  <IonCol size="12" sizeMd="6">
-                    <IonItem>
+                  <IonCol size="12" sizeMd="4">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonLabel position="stacked">PIN Code</IonLabel>
                       <IonInput
-                        placeholder="Occupation"
-                        value={formData.occupation}
-                        onIonChange={(e) => handleInputChange('occupation', e.detail.value!)}
-                        className="text-gray-900 placeholder-gray-500"
+                        value={formData.pincode}
+                        onIonInput={(e) => handleInputChange('pincode', e.detail.value!)}
+                        placeholder="6-digit PIN"
+                        maxlength={6}
                       />
                     </IonItem>
                   </IonCol>
+                </IonRow>
+
+                {/* Professional Information */}
+                <IonRow>
+                  <IonCol size="12">
+                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
+                      Professional Information
+                    </h3>
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
                   <IonCol size="12" sizeMd="6">
-                    <IonItem>
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonLabel position="stacked">Occupation</IonLabel>
                       <IonSelect
-                        value={formData.annualIncome}
-                        onIonChange={(e) => handleInputChange('annualIncome', e.detail.value)}
-                        placeholder="Annual Income"
-                        className="text-gray-900"
+                        value={formData.occupation}
+                        onIonChange={(e) => handleInputChange('occupation', e.detail.value)}
+                        placeholder="Select Occupation"
+                      >
+                        <IonSelectOption value="salaried">Salaried Employee</IonSelectOption>
+                        <IonSelectOption value="business">Business Owner</IonSelectOption>
+                        <IonSelectOption value="freelancer">Freelancer</IonSelectOption>
+                        <IonSelectOption value="retired">Retired</IonSelectOption>
+                        <IonSelectOption value="student">Student</IonSelectOption>
+                        <IonSelectOption value="others">Others</IonSelectOption>
+                      </IonSelect>
+                    </IonItem>
+                  </IonCol>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonLabel position="stacked">Annual Income</IonLabel>
+                      <IonSelect
+                        value={formData.income}
+                        onIonChange={(e) => handleInputChange('income', e.detail.value)}
+                        placeholder="Select Income Range"
                       >
                         <IonSelectOption value="below-2">Below ₹2 Lakhs</IonSelectOption>
                         <IonSelectOption value="2-5">₹2-5 Lakhs</IonSelectOption>
@@ -358,125 +385,147 @@ const BankSignupPage = () => {
                     </IonItem>
                   </IonCol>
                 </IonRow>
+
+                {/* Account Information */}
+                <IonRow>
+                  <IonCol size="12">
+                    <h3 style={{ color: '#2c3e50', marginTop: '24px', marginBottom: '16px', fontSize: '18px' }}>
+                      Account Information
+                    </h3>
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonLabel position="stacked">Account Type *</IonLabel>
+                      <IonSelect
+                        value={formData.accountType}
+                        onIonChange={(e) => handleInputChange('accountType', e.detail.value)}
+                        placeholder="Select Account Type"
+                      >
+                        <IonSelectOption value="savings">Savings Account</IonSelectOption>
+                        <IonSelectOption value="current">Current Account</IonSelectOption>
+                        <IonSelectOption value="salary">Salary Account</IonSelectOption>
+                        <IonSelectOption value="fd">Fixed Deposit Account</IonSelectOption>
+                      </IonSelect>
+                    </IonItem>
+                    {errors.accountType && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.accountType}</IonText>}
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={lockClosedOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Password *</IonLabel>
+                      <IonInput
+                        type="password"
+                        value={formData.password}
+                        onIonInput={(e) => handleInputChange('password', e.detail.value!)}
+                        placeholder="Minimum 8 characters"
+                      />
+                    </IonItem>
+                    {errors.password && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.password}</IonText>}
+                  </IonCol>
+                  <IonCol size="12" sizeMd="6">
+                    <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
+                      <IonIcon icon={lockClosedOutline} slot="start" style={{ color: '#667eea' }} />
+                      <IonLabel position="stacked">Confirm Password *</IonLabel>
+                      <IonInput
+                        type="password"
+                        value={formData.confirmPassword}
+                        onIonInput={(e) => handleInputChange('confirmPassword', e.detail.value!)}
+                        placeholder="Re-enter password"
+                      />
+                    </IonItem>
+                    {errors.confirmPassword && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.confirmPassword}</IonText>}
+                  </IonCol>
+                </IonRow>
+
+                {/* Terms and Conditions */}
+                <IonRow>
+                  <IonCol size="12">
+                    <IonItem style={{ '--background': 'transparent', '--border-radius': '12px', marginTop: '16px' }}>
+                      <IonCheckbox
+                        checked={formData.agreeTerms}
+                        onIonChange={(e) => handleInputChange('agreeTerms', e.detail.checked)}
+                        slot="start"
+                        style={{ '--color': '#667eea' }}
+                      />
+                      <IonLabel style={{ marginLeft: '12px', fontSize: '14px' }}>
+                        I agree to the{' '}
+                        <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
+                          Terms and Conditions
+                        </span>{' '}
+                        and{' '}
+                        <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
+                          Privacy Policy
+                        </span>
+                      </IonLabel>
+                    </IonItem>
+                    {errors.agreeTerms && (
+                      <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>
+                        {errors.agreeTerms}
+                      </IonText>
+                    )}
+                  </IonCol>
+                </IonRow>
+
+                {/* Submit Button */}
+                <IonRow>
+                  <IonCol size="12">
+                    <IonButton
+                      expand="block"
+                      size="large"
+                      onClick={handleSubmit}
+                      style={{
+                        '--background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        '--color': 'white',
+                        '--border-radius': '12px',
+                        height: '50px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        marginTop: '24px',
+                        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)'
+                      }}
+                    >
+                      Create My Account
+                    </IonButton>
+                  </IonCol>
+                </IonRow>
+
+                <IonRow>
+                  <IonCol size="12" style={{ textAlign: 'center', marginTop: '16px' }}>
+                    <IonText style={{ fontSize: '14px', color: '#7f8c8d' }}>
+                      Already have an account?{' '}
+                      <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
+                        Sign In
+                      </span>
+                    </IonText>
+                  </IonCol>
+                </IonRow>
               </IonGrid>
-            </div>
+            </IonCardContent>
+          </IonCard>
 
-            {/* Account Type */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800">Account Type</h3>
-              <IonItem>
-                <IonSelect
-                  value={formData.accountType}
-                  onIonChange={(e) => handleInputChange('accountType', e.detail.value)}
-                  placeholder="Select Account Type"
-                  className="text-gray-900"
-                >
-                  <IonSelectOption value="savings">Savings Account</IonSelectOption>
-                  <IonSelectOption value="current">Current Account</IonSelectOption>
-                  <IonSelectOption value="salary">Salary Account</IonSelectOption>
-                  <IonSelectOption value="student">Student Account</IonSelectOption>
-                </IonSelect>
-              </IonItem>
-            </div>
-
-            {/* Security */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800">Security</h3>
-              <IonItem>
-                <IonInput
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Create Password *"
-                  value={formData.password}
-                  onIonChange={(e) => handleInputChange('password', e.detail.value!)}
-                  className="text-gray-900 placeholder-gray-500"
-                />
-                <IonButton slot="end" fill="clear" onClick={() => setShowPassword(!showPassword)}>
-                  <IonIcon icon={showPassword ? eyeOffOutline : eyeOutline} className="text-blue-600" />
-                </IonButton>
-              </IonItem>
-              <IonItem>
-                <IonInput
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Confirm Password *"
-                  value={formData.confirmPassword}
-                  onIonChange={(e) => handleInputChange('confirmPassword', e.detail.value!)}
-                  className="text-gray-900 placeholder-gray-500"
-                />
-                <IonButton slot="end" fill="clear" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  <IonIcon icon={showConfirmPassword ? eyeOffOutline : eyeOutline} className="text-blue-600" />
-                </IonButton>
-              </IonItem>
-            </div>
-
-            {/* Terms and Conditions */}
-            <div className="space-y-4">
-              <IonItem lines="none" className="bg-blue-50 rounded-xl border border-blue-100 p-4">
-                <IonCheckbox
-                  slot="start"
-                  checked={formData.agreeTerms}
-                  onIonChange={(e) => handleInputChange('agreeTerms', e.detail.checked!)}
-                />
-                <IonLabel className="text-sm text-gray-700 leading-relaxed">
-                  I agree to the <span className="text-blue-600 font-semibold cursor-pointer hover:underline">Terms & Conditions</span> and <span className="text-blue-600 font-semibold cursor-pointer hover:underline">Privacy Policy</span> of RiverAuth Digital Bank *
-                </IonLabel>
-              </IonItem>
-              <IonItem lines="none" className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-                <IonCheckbox
-                  slot="start"
-                  checked={formData.agreeMarketing}
-                  onIonChange={(e) => handleInputChange('agreeMarketing', e.detail.checked!)}
-                />
-                <IonLabel className="text-sm text-gray-600 leading-relaxed">
-                  I would like to receive updates about new products, offers, and services from RiverAuth
-                </IonLabel>
-              </IonItem>
-            </div>
-
-            {/* Submit Button */}
-            <IonButton
-              expand="block"
-              className="h-14 bg-gradient-to-r from-blue-600 to-purple-700 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-              onClick={handleSubmit}
-            >
-              Create My RiverAuth Account
-            </IonButton>
-
-            {/* Login Link */}
-            <div className="text-center pt-4 border-t border-gray-200">
-              <p className="text-gray-600">
-                Already have an account? <span className="text-blue-600 font-semibold cursor-pointer hover:underline">Sign In</span>
-              </p>
-            </div>
-
-            {/* Security Badge */}
-            <div className="flex items-center justify-center space-x-2 pt-4 text-green-600">
-              <IonIcon icon={shieldCheckmarkOutline} className="w-5 h-5" />
-              <span className="text-sm font-medium">256-bit SSL Encrypted & RBI Approved</span>
-            </div>
-          </IonCardContent>
-        </IonCard>
-
-        {/* Footer */}
-        <div className="text-center mt-8 pb-8">
-          <p className="text-xs text-gray-500 leading-relaxed">
-            RiverAuth is regulated by the Reserve Bank of India (RBI)<br />
-            Member of Deposit Insurance and Credit Guarantee Corporation (DICGC)
-          </p>
+          {/* Security Notice */}
+          <IonCard style={{ 
+            marginTop: '16px',
+            marginBottom: '20px',
+            borderRadius: '12px',
+            background: 'rgba(255,255,255,0.9)',
+            border: '1px solid rgba(102, 126, 234, 0.2)'
+          }}>
+            <IonCardContent style={{ padding: '16px', textAlign: 'center' }}>
+              <IonText style={{ fontSize: '12px', color: '#7f8c8d', lineHeight: '1.5' }}>
+                🔒 Your information is secure and encrypted. We follow RBI guidelines and use bank-grade security to protect your data.
+              </IonText>
+            </IonCardContent>
+          </IonCard>
         </div>
       </IonContent>
-      <IonToast
-        isOpen={showToast}
-        onDidDismiss={() => setShowToast(false)}
-        message={toastMessage}
-        buttons={[
-          {
-            text: 'Close',
-            role: 'cancel',
-            handler: () => setShowToast(false)
-          }
-        ]}
-      />
-    </IonApp>
+    </IonPage>
   );
 };
 
