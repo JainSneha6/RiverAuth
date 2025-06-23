@@ -22,7 +22,8 @@ import {
   IonCol,
   IonText,
   IonBackButton,
-  IonButtons
+  IonButtons,
+  createGesture,
 } from '@ionic/react';
 import {
   personOutline,
@@ -39,7 +40,10 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Keyboard } from '@capacitor/keyboard';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
+const BACKEND_URL = 'https://your-backend-api.com/gestures'; // replace with your actual endpoint
+
 const BankSignupPage: React.FC = () => {
+  // State for form data
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -58,18 +62,37 @@ const BankSignupPage: React.FC = () => {
     confirmPassword: '',
     agreeTerms: false
   });
-
+  // Validation errors
   const [errors, setErrors] = useState<any>({});
 
+  // Gesture data arrays
+  const [swipeEvents, setSwipeEvents] = useState<any[]>([]);
+  const [tapEvents, setTapEvents] = useState<any[]>([]);
+
+  // Typing speed data
+  const [typingEvents, setTypingEvents] = useState<any[]>([]);
+  const typingDataRef = useRef<{ [field: string]: { start: number; last: number } }>({});
+
+  // Refs for gesture detection
   const contentRef = useRef<HTMLIonContentElement>(null);
+  const downDataRef = useRef<Map<number, { x: number; y: number; timestamp: number }>>(new Map());
+  const swipeDataRef = useRef<{ startX: number; startY: number; startTime: number }>({
+    startX: 0,
+    startY: 0,
+    startTime: 0
+  });
+  const gestureRef = useRef<any>(null);
+
+  // Thresholds
+  const HOLD_THRESHOLD = 10; // px movement threshold to consider tap/hold
+  const SWIPE_DISTANCE_THRESHOLD = 15; // px for swipe
+  const SWIPE_TIME_THRESHOLD = 1000; // ms max duration for swipe
+  const TAP_TIME_THRESHOLD = 1000; // ms max duration for tap
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       StatusBar.setStyle({ style: Style.Dark });
       StatusBar.setBackgroundColor({ color: '#667eea' });
-    }
-
-    if (Capacitor.isNativePlatform()) {
       Keyboard.setAccessoryBarVisible({ isVisible: true });
       Keyboard.addListener('keyboardWillShow', () => {
         if (contentRef.current) {
@@ -78,70 +101,237 @@ const BankSignupPage: React.FC = () => {
       });
     }
 
-    const contentElement = contentRef.current;
-    if (contentElement) {
-      const handlePointerEvent = (event: PointerEvent) => {
-        const {
-          clientX, clientY, pressure, pointerType, timeStamp, pointerId, width, height,
-          tiltX, tiltY, tangentialPressure, twist, isPrimary, screenX, screenY, pageX, pageY,
-          offsetX, offsetY, movementX, movementY, button, buttons, target
-        } = event;
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
 
-        const targetInfo = target ? `${(target as HTMLElement).tagName}${target.id ? `#${target.id}` : ''}` : 'N/A';
+    // Detailed log (optional)
+    const logEventDetails = (event: PointerEvent) => {
+      const {
+        clientX, clientY, pointerType, timeStamp, pointerId,
+        screenX, screenY, pageX, pageY, offsetX, offsetY,
+        movementX, movementY, button, buttons, target
+      } = event;
+      const targetInfo = target && (target as HTMLElement).tagName
+        ? `${(target as HTMLElement).tagName}${(target as HTMLElement).id ? `#${(target as HTMLElement).id}` : ''}`
+        : 'N/A';
+      const eventType = event.type === 'pointerdown'
+        ? 'Touch Down'
+        : event.type === 'pointerup'
+          ? 'Touch Up'
+          : 'Touch Move';
+      console.log(`${eventType}:
+  pointerId: ${pointerId}
+  clientX/Y: ${clientX}, ${clientY}
+  screenX/Y: ${screenX}, ${screenY}
+  pageX/Y: ${pageX}, ${pageY}
+  offsetX/Y: ${offsetX}, ${offsetY}
+  movementX/Y: ${movementX}, ${movementY}
+  button/buttons: ${button}/${buttons}
+  pointerType: ${pointerType}
+  timestamp: ${timeStamp}
+  target: ${targetInfo}`);
+    };
 
-        const eventType = event.type === 'pointerdown' ? 'Touch Down' :
-          event.type === 'pointerup' ? 'Touch Up' :
-            'Touch Move';
+    // Pointer down: record start coords/time
+    const handlePointerDown = (event: PointerEvent) => {
+      downDataRef.current.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+        timestamp: event.timeStamp
+      });
+      logEventDetails(event);
+    };
+    // Pointer up: detect tap or swipe, record JSON
+    const handlePointerUp = (event: PointerEvent) => {
+      const downData = downDataRef.current.get(event.pointerId);
+      if (downData) {
+        const startX = downData.x;
+        const startY = downData.y;
+        const endX = event.clientX;
+        const endY = event.clientY;
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const duration = event.timeStamp - downData.timestamp;
+        const timestamp = Date.now();
 
-        const logMessage = `
-${eventType} Event Details:
-Coordinates:
-  clientX: ${clientX}, clientY: ${clientY}
-  screenX: ${screenX}, screenY: ${screenY}
-  pageX: ${pageX}, pageY: ${pageY}
-  offsetX: ${offsetX}, offsetY: ${offsetY}
-Pressure: ${pressure}
-Pointer Type: ${pointerType}
-Timestamp: ${timeStamp}
-Pointer ID: ${pointerId}
-Width: ${width}, Height: ${height}
-Tilt: tiltX=${tiltX}, tiltY=${tiltY}
-Tangential Pressure: ${tangentialPressure}
-Twist: ${twist}
-Is Primary: ${isPrimary}
-Movement: movementX=${movementX}, movementY=${movementY}
-Button: ${button}, Buttons: ${buttons}
-Target Element: ${targetInfo}
-        `.trim();
+        console.log(`Pointer ${event.pointerId} up: distance=${distance.toFixed(2)}px, duration=${duration.toFixed(2)}ms`);
 
-        console.log(logMessage);
-      };
+        if (distance < HOLD_THRESHOLD && duration < TAP_TIME_THRESHOLD) {
+          // Tap detected
+          const tapEvent = {
+            pointerId: event.pointerId,
+            x: endX,
+            y: endY,
+            duration,
+            timestamp,
+            pointerType: event.pointerType
+          };
+          setTapEvents(prev => [...prev, tapEvent]);
+          console.log('Tap event recorded:', tapEvent);
+        } else if (duration < SWIPE_TIME_THRESHOLD && distance > SWIPE_DISTANCE_THRESHOLD) {
+          // Swipe detected
+          const direction = Math.abs(deltaX) > Math.abs(deltaY)
+            ? (deltaX > 0 ? 'right' : 'left')
+            : (deltaY > 0 ? 'down' : 'up');
+          const swipeEvent = {
+            pointerId: event.pointerId,
+            startX,
+            startY,
+            endX,
+            endY,
+            deltaX,
+            deltaY,
+            distance,
+            duration,
+            direction,
+            timestamp,
+            pointerType: event.pointerType
+          };
+          setSwipeEvents(prev => [...prev, swipeEvent]);
+          console.log('Swipe event recorded:', swipeEvent);
+        } else {
+          console.log('Gesture not classified as tap or swipe (movement or duration thresholds)');
+        }
+        downDataRef.current.delete(event.pointerId);
+      }
+      logEventDetails(event);
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      logEventDetails(event);
+    };
 
-      contentElement.addEventListener('pointerdown', handlePointerEvent);
-      contentElement.addEventListener('pointerup', handlePointerEvent);
-      contentElement.addEventListener('pointermove', handlePointerEvent);
+    contentEl.addEventListener('pointerdown', handlePointerDown);
+    contentEl.addEventListener('pointerup', handlePointerUp);
+    contentEl.addEventListener('pointermove', handlePointerMove);
 
-      return () => {
-        contentElement.removeEventListener('pointerdown', handlePointerEvent);
-        contentElement.removeEventListener('pointerup', handlePointerEvent);
-        contentElement.removeEventListener('pointermove', handlePointerEvent);
-      };
-    }
+    // Also Ionic createGesture on scroll element
+    contentEl.getScrollElement().then(scrollEl => {
+      if (!scrollEl) return;
+      const gesture = createGesture({
+        el: scrollEl,
+        gestureName: 'swipe-gesture',
+        threshold: 0,
+        onStart: detail => {
+          swipeDataRef.current = {
+            startX: detail.startX,
+            startY: detail.startY,
+            startTime: Date.now()
+          };
+        },
+        onEnd: detail => {
+          const { startX, startY, startTime } = swipeDataRef.current;
+          const endX = detail.currentX;
+          const endY = detail.currentY;
+          const deltaX = endX - startX;
+          const deltaY = endY - startY;
+          const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+          const duration = Date.now() - startTime;
+          const timestamp = Date.now();
+          console.log(`Gesture end: distance=${distance.toFixed(2)}px, duration=${duration}ms`);
+          if (distance < HOLD_THRESHOLD && duration < TAP_TIME_THRESHOLD) {
+            // treat as tap
+            const tapEvent = {
+              pointerId: -1, // gesture API does not give pointerId; mark as -1 or omit
+              x: endX,
+              y: endY,
+              duration,
+              timestamp,
+              source: 'gesture'
+            };
+            setTapEvents(prev => [...prev, tapEvent]);
+            console.log('Tap event (gesture) recorded:', tapEvent);
+          } else if (duration < SWIPE_TIME_THRESHOLD && distance > SWIPE_DISTANCE_THRESHOLD) {
+            const direction = Math.abs(deltaX) > Math.abs(deltaY)
+              ? (deltaX > 0 ? 'right' : 'left')
+              : (deltaY > 0 ? 'down' : 'up');
+            const swipeEvent = {
+              pointerId: -1,
+              startX,
+              startY,
+              endX,
+              endY,
+              deltaX,
+              deltaY,
+              distance,
+              duration,
+              direction,
+              timestamp,
+              source: 'gesture'
+            };
+            setSwipeEvents(prev => [...prev, swipeEvent]);
+            console.log('Swipe event (gesture) recorded:', swipeEvent);
+          } else {
+            console.log('Gesture (Ionic) not classified');
+          }
+        }
+      });
+      gesture.enable(true);
+      gestureRef.current = gesture;
+    });
+
+    return () => {
+      contentEl.removeEventListener('pointerdown', handlePointerDown);
+      contentEl.removeEventListener('pointerup', handlePointerUp);
+      contentEl.removeEventListener('pointermove', handlePointerMove);
+      if (gestureRef.current) {
+        gestureRef.current.destroy();
+        gestureRef.current = null;
+      }
+    };
   }, []);
 
   const labelStyle = { color: 'black' };
   const inputStyle = { color: 'black', '--placeholder-color': 'black' };
 
+  // Handle input change: update formData and record typing timestamps
   const handleInputChange = (field: string, value: any) => {
+    const now = Date.now();
+    // Initialize or update typing data
+    if (!typingDataRef.current[field]) {
+      typingDataRef.current[field] = { start: now, last: now };
+    } else {
+      typingDataRef.current[field].last = now;
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev: any) => ({ ...prev, [field]: '' }));
     }
   };
 
+  // Handle blur: compute typing speed for field
+  const handleInputBlur = (field: string) => {
+    const data = typingDataRef.current[field];
+    if (data) {
+      const { start, last } = data;
+      const duration = last - start; // ms
+      const value = formData[field as keyof typeof formData] as string;
+      const length = value ? value.length : 0;
+      let wpm = 0;
+      if (duration > 0) {
+        // words approximated as length/5
+        wpm = (length / 5) / (duration / 60000);
+      }
+      const event = {
+        field,
+        length,
+        duration,
+        wpm: Math.round(wpm),
+        timestamp: Date.now()
+      };
+      setTypingEvents(prev => [...prev, event]);
+      console.log('Typing event recorded:', event);
+      delete typingDataRef.current[field];
+    }
+  };
+
+  const handleSelectBlur = (field: string) => {
+    // For select fields, we can record typingEvents similarly if desired.
+    // Here we skip since selection isn't typing.
+  };
+
   const validateForm = () => {
     const newErrors: any = {};
-
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) {
@@ -176,19 +366,46 @@ Target Element: ${targetInfo}
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = 'You must agree to the terms and conditions';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
-    if (validateForm()) {
-      console.log('Form submitted:', formData);
-      if (Capacitor.isNativePlatform()) {
-        await Haptics.impact({ style: ImpactStyle.Medium });
+    if (!validateForm()) return;
+    console.log('Form submitted:', formData);
+    console.log('Swipe payload:', swipeEvents);
+    console.log('Tap payload:', tapEvents);
+    console.log('Typing payload:', typingEvents);
+
+    // Send to backend
+    try {
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          form: formData,
+          gestures: {
+            swipes: swipeEvents,
+            taps: tapEvents
+          },
+          typing: typingEvents
+        })
+      });
+      if (!response.ok) {
+        console.error('Failed to send data to backend:', response.statusText);
+      } else {
+        console.log('Data sent successfully');
       }
-      console.log('Success: Account registration successful! You will receive a confirmation email shortly.');
+    } catch (error) {
+      console.error('Error sending data:', error);
     }
+
+    if (Capacitor.isNativePlatform()) {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+    }
+    console.log('Success: Account registration successful! You will receive a confirmation email shortly.');
   };
 
   const states = [
@@ -210,7 +427,6 @@ Target Element: ${targetInfo}
           <IonTitle style={{ color: 'white', fontWeight: 'bold' }}>Create Account</IonTitle>
         </IonToolbar>
       </IonHeader>
-
       <IonContent
         ref={contentRef}
         style={{ '--background': 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}
@@ -254,9 +470,9 @@ Target Element: ${targetInfo}
                 Join millions of Indians banking with trust and security
               </IonText>
             </IonCardHeader>
-
             <IonCardContent>
               <IonGrid>
+                {/* Personal Information */}
                 <IonRow>
                   <IonCol size="12">
                     <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
@@ -264,7 +480,6 @@ Target Element: ${targetInfo}
                     </h3>
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -273,6 +488,7 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.firstName}
                         onIonInput={(e) => handleInputChange('firstName', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('firstName')}
                         placeholder="Enter your first name"
                         style={inputStyle}
                       />
@@ -286,6 +502,7 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.lastName}
                         onIonInput={(e) => handleInputChange('lastName', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('lastName')}
                         placeholder="Enter your last name"
                         style={inputStyle}
                       />
@@ -293,7 +510,7 @@ Target Element: ${targetInfo}
                     {errors.lastName && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.lastName}</IonText>}
                   </IonCol>
                 </IonRow>
-
+                {/* Email & Phone */}
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -303,6 +520,7 @@ Target Element: ${targetInfo}
                         type="email"
                         value={formData.email}
                         onIonInput={(e) => handleInputChange('email', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('email')}
                         placeholder="Enter your email"
                         style={inputStyle}
                       />
@@ -317,6 +535,7 @@ Target Element: ${targetInfo}
                         type="tel"
                         value={formData.phone}
                         onIonInput={(e) => handleInputChange('phone', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('phone')}
                         placeholder="Enter your phone number"
                         style={inputStyle}
                       />
@@ -324,7 +543,7 @@ Target Element: ${targetInfo}
                     {errors.phone && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.phone}</IonText>}
                   </IonCol>
                 </IonRow>
-
+                {/* Aadhar & PAN */}
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -333,6 +552,7 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.aadhar}
                         onIonInput={(e) => handleInputChange('aadhar', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('aadhar')}
                         placeholder="Enter your Aadhar number"
                         style={inputStyle}
                       />
@@ -346,6 +566,7 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.pan}
                         onIonInput={(e) => handleInputChange('pan', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('pan')}
                         placeholder="Enter your PAN number"
                         style={inputStyle}
                       />
@@ -353,7 +574,7 @@ Target Element: ${targetInfo}
                     {errors.pan && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.pan}</IonText>}
                   </IonCol>
                 </IonRow>
-
+                {/* Address */}
                 <IonRow>
                   <IonCol size="12">
                     <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
@@ -361,7 +582,6 @@ Target Element: ${targetInfo}
                     </h3>
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -370,13 +590,13 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.address}
                         onIonInput={(e) => handleInputChange('address', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('address')}
                         placeholder="Enter your address"
                         style={inputStyle}
                       />
                     </IonItem>
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12" sizeMd="4">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -385,6 +605,7 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.city}
                         onIonInput={(e) => handleInputChange('city', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('city')}
                         placeholder="Enter your city"
                         style={inputStyle}
                       />
@@ -397,6 +618,7 @@ Target Element: ${targetInfo}
                       <IonSelect
                         value={formData.state}
                         onIonChange={(e) => handleInputChange('state', e.detail.value!)}
+                        // onIonBlur={() => handleSelectBlur('state')}
                         placeholder="Select your state"
                         style={inputStyle}
                       >
@@ -413,13 +635,14 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.pincode}
                         onIonInput={(e) => handleInputChange('pincode', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('pincode')}
                         placeholder="Enter your pincode"
                         style={inputStyle}
                       />
                     </IonItem>
                   </IonCol>
                 </IonRow>
-
+                {/* Account Info */}
                 <IonRow>
                   <IonCol size="12">
                     <h3 style={{ color: 'black', marginBottom: '16px', fontSize: '18px' }}>
@@ -427,7 +650,6 @@ Target Element: ${targetInfo}
                     </h3>
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -436,6 +658,7 @@ Target Element: ${targetInfo}
                       <IonInput
                         value={formData.occupation}
                         onIonInput={(e) => handleInputChange('occupation', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('occupation')}
                         placeholder="Enter your occupation"
                         style={inputStyle}
                       />
@@ -449,13 +672,13 @@ Target Element: ${targetInfo}
                         type="number"
                         value={formData.income}
                         onIonInput={(e) => handleInputChange('income', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('income')}
                         placeholder="Enter your annual income"
                         style={inputStyle}
                       />
                     </IonItem>
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -464,6 +687,7 @@ Target Element: ${targetInfo}
                       <IonSelect
                         value={formData.accountType}
                         onIonChange={(e) => handleInputChange('accountType', e.detail.value!)}
+                        // onIonBlur={() => handleSelectBlur('accountType')}
                         placeholder="Select account type"
                         style={inputStyle}
                       >
@@ -475,7 +699,6 @@ Target Element: ${targetInfo}
                     {errors.accountType && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.accountType}</IonText>}
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <IonItem style={{ '--background': 'rgba(255,255,255,0.8)', '--border-radius': '12px', marginBottom: '12px' }}>
@@ -485,6 +708,7 @@ Target Element: ${targetInfo}
                         type="password"
                         value={formData.password}
                         onIonInput={(e) => handleInputChange('password', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('password')}
                         placeholder="Enter your password"
                         style={inputStyle}
                       />
@@ -499,6 +723,7 @@ Target Element: ${targetInfo}
                         type="password"
                         value={formData.confirmPassword}
                         onIonInput={(e) => handleInputChange('confirmPassword', e.detail.value!)}
+                        onIonBlur={() => handleInputBlur('confirmPassword')}
                         placeholder="Confirm your password"
                         style={inputStyle}
                       />
@@ -506,7 +731,6 @@ Target Element: ${targetInfo}
                     {errors.confirmPassword && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.confirmPassword}</IonText>}
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12">
                     <IonItem style={{ '--background': 'transparent', marginTop: '16px' }}>
@@ -514,7 +738,6 @@ Target Element: ${targetInfo}
                         slot="start"
                         checked={formData.agreeTerms}
                         onIonChange={(e) => handleInputChange('agreeTerms', e.detail.checked)}
-                        style={{ '--checkbox-background-checked': '#667eea' }}
                       />
                       <IonLabel style={{ color: 'black', fontSize: '14px' }}>
                         I agree to the <span style={{ color: '#667eea', textDecoration: 'underline' }}>Terms & Conditions</span>
@@ -523,7 +746,6 @@ Target Element: ${targetInfo}
                     {errors.agreeTerms && <IonText color="danger" style={{ fontSize: '12px', marginLeft: '12px' }}>{errors.agreeTerms}</IonText>}
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12">
                     <IonButton
@@ -545,7 +767,6 @@ Target Element: ${targetInfo}
                     </IonButton>
                   </IonCol>
                 </IonRow>
-
                 <IonRow>
                   <IonCol size="12" style={{ textAlign: 'center', marginTop: '16px' }}>
                     <IonText style={{ color: '#7f8c8d', fontSize: '14px' }}>
