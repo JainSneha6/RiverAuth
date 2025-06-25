@@ -17,8 +17,12 @@ import {
   IonButtons,
   IonBackButton,
   IonIcon,
+  IonRippleEffect,
+  IonBadge,
+  IonChip,
+  IonLabel,
 } from '@ionic/react';
-import { businessOutline, chevronBackOutline } from 'ionicons/icons';
+import { businessOutline, chevronBackOutline, shieldCheckmarkOutline, lockClosedOutline, checkmarkCircleOutline } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
@@ -87,8 +91,8 @@ const BankSignupPage: React.FC = () => {
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
-      StatusBar.setStyle({ style: Style.Dark });
-      StatusBar.setBackgroundColor({ color: '#667eea' });
+      StatusBar.setStyle({ style: Style.Light });
+      StatusBar.setBackgroundColor({ color: '#1a1b3a' });
       Keyboard.setAccessoryBarVisible({ isVisible: true });
       Keyboard.addListener('keyboardWillShow', () => {
         if (contentRef.current) {
@@ -178,62 +182,147 @@ const BankSignupPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar style={{ '--background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <IonHeader translucent>
+        <IonToolbar
+          style={{
+            '--background': 'linear-gradient(135deg, #1a1b3a 0%, #2d1b69 50%, #11998e 100%)',
+            '--color': 'white',
+            '--border-color': 'transparent',
+            'height': '60px'
+          }}
+        >
           <IonButtons slot="start">
-            <IonBackButton defaultHref="/" icon={chevronBackOutline} />
+            <IonBackButton
+              defaultHref="/"
+              icon={chevronBackOutline}
+              style={{
+                '--color': 'rgba(255,255,255,0.9)',
+                '--border-radius': '12px',
+                '--padding': '8px'
+              }}
+            />
           </IonButtons>
-          <IonTitle style={{ color: 'white', fontWeight: 'bold' }}>Create Account</IonTitle>
+          <IonTitle style={{
+            color: 'white',
+            fontWeight: '700',
+            fontSize: '20px',
+            letterSpacing: '0.5px'
+          }}>
+            Create Account
+          </IonTitle>
         </IonToolbar>
       </IonHeader>
+
       <IonContent
-        ref={contentRef as React.RefObject<HTMLIonContentElement>} // Type assertion to satisfy IonContent
-        style={{ '--background': 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}
+        ref={contentRef as React.RefObject<HTMLIonContentElement>}
+        style={{
+          '--background': 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 30%, #cbd5e1 100%)',
+          '--padding-top': '0px'
+        }}
+        fullscreen
       >
         <div
           style={{
             minHeight: '100vh',
-            padding: '20px',
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+            padding: '24px 16px 32px',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 30%, #cbd5e1 100%)',
           }}
         >
+          {/* Hero Section */}
           <IonCard
             style={{
-              marginTop: '10px',
-              borderRadius: '16px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              background: 'rgba(255,255,255,0.95)',
-              backdropFilter: 'blur(10px)',
+              marginTop: '20px',
+              borderRadius: '24px',
+              boxShadow: '0 20px 60px rgba(26, 27, 58, 0.15), 0 8px 24px rgba(26, 27, 58, 0.1)',
+              border: 'none',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%)',
+              backdropFilter: 'blur(20px)',
+              overflow: 'hidden',
+              position: 'relative',
             }}
           >
-            <IonCardHeader style={{ textAlign: 'center', paddingBottom: '10px' }}>
+            {/* Decorative elements */}
+            <div style={{
+              position: 'absolute',
+              top: '-50px',
+              right: '-50px',
+              width: '150px',
+              height: '150px',
+              background: 'linear-gradient(135deg, #11998e20, #1a1b3a20)',
+              borderRadius: '50%',
+              opacity: 0.6,
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: '-30px',
+              left: '-30px',
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, #2d1b6920, #11998e20)',
+              borderRadius: '50%',
+              opacity: 0.4,
+            }} />
+
+            <IonCardHeader style={{
+              textAlign: 'center',
+              padding: '32px 24px 16px',
+              position: 'relative',
+              zIndex: 2
+            }}>
               <div
                 style={{
-                  width: '80px',
-                  height: '80px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  borderRadius: '50%',
-                  margin: '0 auto 20px',
+                  width: '96px',
+                  height: '96px',
+                  background: 'linear-gradient(135deg, #1a1b3a 0%, #2d1b69 50%, #11998e 100%)',
+                  borderRadius: '28px',
+                  margin: '0 auto 24px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+                  boxShadow: '0 12px 32px rgba(26, 27, 58, 0.3), 0 4px 16px rgba(17, 153, 142, 0.2)',
+                  transform: 'rotate(-5deg)',
+                  transition: 'transform 0.3s ease',
                 }}
               >
-                <IonIcon icon={businessOutline} style={{ fontSize: '36px', color: 'white' }} />
+                <IonIcon
+                  icon={businessOutline}
+                  style={{
+                    fontSize: '42px',
+                    color: 'white',
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                  }}
+                />
               </div>
+
               <IonCardTitle
-                style={{ color: 'black', fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}
+                style={{
+                  color: '#1a1b3a',
+                  fontSize: '28px',
+                  fontWeight: '800',
+                  marginBottom: '12px',
+                  letterSpacing: '-0.5px',
+                  lineHeight: '1.2'
+                }}
               >
-                Open Your Bank Account
+                Open Your Dream Account
               </IonCardTitle>
-              <IonText style={{ color: '#7f8c8d', fontSize: '14px' }}>
-                Join millions of Indians banking with trust and security
+
+              <IonText style={{
+                color: '#64748b',
+                fontSize: '16px',
+                fontWeight: '500',
+                lineHeight: '1.5'
+              }}>
+                Join millions of Indians banking with
+                <br />
+                <span style={{ color: '#11998e', fontWeight: '600' }}>trust and security</span>
               </IonText>
+
+
             </IonCardHeader>
-            <IonCardContent>
-              <IonGrid>
+
+            <IonCardContent style={{ padding: '0 24px 32px' }}>
+              <IonGrid style={{ padding: '0' }}>
                 <PersonalInfoSection
                   formData={formData}
                   errors={errors}
@@ -253,6 +342,7 @@ const BankSignupPage: React.FC = () => {
                   handleInputBlur={handleInputBlur}
                   handleCheckboxChange={handleCheckboxChange}
                 />
+
                 <IonRow>
                   <IonCol size="12">
                     <IonButton
@@ -260,25 +350,48 @@ const BankSignupPage: React.FC = () => {
                       size="large"
                       onClick={handleSubmit}
                       style={{
-                        '--background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        '--background': 'linear-gradient(135deg, #1a1b3a 0%, #2d1b69 50%, #11998e 100%)',
                         '--color': 'white',
-                        '--border-radius': '12px',
-                        height: '50px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        marginTop: '24px',
-                        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+                        '--border-radius': '16px',
+                        '--box-shadow': '0 8px 24px rgba(26, 27, 58, 0.3), 0 4px 12px rgba(17, 153, 142, 0.2)',
+                        '--padding-top': '16px',
+                        '--padding-bottom': '16px',
+                        height: '56px',
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        marginTop: '32px',
+                        textTransform: 'none',
+                        letterSpacing: '0.5px',
+                        position: 'relative',
+                        overflow: 'hidden'
                       }}
                     >
+                      <IonRippleEffect />
                       Create My Account
+                      <IonIcon
+                        icon={checkmarkCircleOutline}
+                        style={{ marginLeft: '8px', fontSize: '20px' }}
+                      />
                     </IonButton>
                   </IonCol>
                 </IonRow>
+
                 <IonRow>
-                  <IonCol size="12" style={{ textAlign: 'center', marginTop: '16px' }}>
-                    <IonText style={{ color: '#7f8c8d', fontSize: '14px' }}>
+                  <IonCol size="12" style={{ textAlign: 'center', marginTop: '24px' }}>
+                    <IonText style={{
+                      color: '#64748b',
+                      fontSize: '15px',
+                      fontWeight: '500'
+                    }}>
                       Already have an account?{' '}
-                      <span style={{ color: '#667eea', textDecoration: 'underline', cursor: 'pointer' }}>
+                      <span style={{
+                        color: '#11998e',
+                        fontWeight: '700',
+                        textDecoration: 'none',
+                        cursor: 'pointer',
+                        borderBottom: '2px solid transparent',
+                        transition: 'border-color 0.2s ease'
+                      }}>
                         Sign In
                       </span>
                     </IonText>
@@ -287,22 +400,8 @@ const BankSignupPage: React.FC = () => {
               </IonGrid>
             </IonCardContent>
           </IonCard>
-          <IonCard
-            style={{
-              marginTop: '16px',
-              marginBottom: '20px',
-              borderRadius: '12px',
-              background: 'rgba(255,255,255,0.9)',
-              border: '1px solid rgba(102, 126, 234, 0.2)',
-            }}
-          >
-            <IonCardContent style={{ padding: '16px', textAlign: 'center' }}>
-              <IonText style={{ color: '#7f8c8d', fontSize: '12px', lineHeight: '1.5' }}>
-                🔒 Your information is secure and encrypted. We follow RBI guidelines and use
-                bank-grade security to protect your data.
-              </IonText>
-            </IonCardContent>
-          </IonCard>
+
+
         </div>
       </IonContent>
     </IonPage>
