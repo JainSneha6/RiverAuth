@@ -60,7 +60,7 @@ const BankSignupPage: React.FC = () => {
   /* ----------------------------------------------------------------
      1.  WebSocket (must be inside the component!)
   ---------------------------------------------------------------- */
-  const { sendJSON, readyState } = useSingletonWebSocket('ws://localhost:8080');
+  const { sendJSON, readyState } = useSingletonWebSocket('ws://localhost:8081');
 
   /* ----------------------------------------------------------------
      2. Gesture & typing hooks
@@ -185,32 +185,118 @@ const BankSignupPage: React.FC = () => {
   };
 
   /* ----------------------------------------------------------------
-     7.  UI (unchanged apart from the submit handler)
+     7.  Complete UI with header, form sections, and submit button
   ---------------------------------------------------------------- */
   return (
     <IonPage>
-      {/* header, content, form sections … */}
-      <IonContent ref={contentRef as any} fullscreen>
-        <IonGrid>
-          {/* sections */}
-          <IonRow>
-            <IonCol size="12">
-              <IonButton expand="block" size="large" onClick={handleSubmit}>
-                <IonRippleEffect />
-                Create My Account
-                <IonIcon
-                  icon={checkmarkCircleOutline}
-                  style={{ marginLeft: 8, fontSize: 20 }}
-                />
-              </IonButton>
-            </IonCol>
-          </IonRow>
-          {readyState() !== WebSocket.OPEN && (
-            <IonText color="danger" style={{ fontSize: 14 }}>
-              WebSocket not connected – data will not be sent.
-            </IonText>
-          )}
-        </IonGrid>
+      <IonHeader>
+        <IonToolbar style={{
+          '--background': 'linear-gradient(135deg, #1a1b3a 0%, #2d1b69 50%, #11998e 100%)',
+          '--color': 'white'
+        }}>
+          <IonButtons slot="start">
+            <IonBackButton 
+              icon={chevronBackOutline} 
+              defaultHref="/" 
+              style={{ color: 'white' }}
+            />
+          </IonButtons>
+          <IonTitle style={{ 
+            fontWeight: '700', 
+            fontSize: '20px',
+            textAlign: 'center'
+          }}>
+            Create Account
+          </IonTitle>
+        </IonToolbar>
+      </IonHeader>
+
+      <IonContent 
+        ref={contentRef as any} 
+        fullscreen
+        style={{
+          '--background': 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+        }}
+      >
+        <div style={{
+          minHeight: '100vh',
+          padding: '20px 0'
+        }}>
+          <IonGrid style={{ maxWidth: '800px', margin: '0 auto' }}>
+            
+            {/* Personal Information Section */}
+            <PersonalInfoSection
+              formData={formData}
+              errors={errors}
+              handleInputChange={handleInputChange}
+              handleInputBlur={handleInputBlur}
+            />
+
+            {/* Address Information Section */}
+            <AddressInfoSection
+              formData={formData}
+              errors={errors}
+              handleInputChange={handleInputChange}
+              handleInputBlur={handleInputBlur}
+            />
+
+            {/* Account Information Section */}
+            <AccountInfoSection
+              formData={formData}
+              errors={errors}
+              handleInputChange={handleInputChange}
+              handleInputBlur={handleInputBlur}
+              handleCheckboxChange={handleCheckboxChange}
+            />
+
+            {/* Submit Button */}
+            <IonRow style={{ marginTop: '32px' }}>
+              <IonCol size="12">
+                <IonButton 
+                  expand="block" 
+                  size="large" 
+                  onClick={handleSubmit}
+                  disabled={readyState() !== WebSocket.OPEN}
+                  style={{
+                    '--background': readyState() === WebSocket.OPEN 
+                      ? 'linear-gradient(135deg, #1a1b3a 0%, #11998e 100%)'
+                      : '#94a3b8',
+                    '--color': 'white',
+                    '--border-radius': '16px',
+                    '--box-shadow': '0 8px 25px rgba(26, 27, 58, 0.3)',
+                    height: '56px',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    textTransform: 'none'
+                  }}
+                >
+                  <IonRippleEffect />
+                  Create My Account
+                  <IonIcon
+                    icon={checkmarkCircleOutline}
+                    style={{ marginLeft: '8px', fontSize: '20px' }}
+                  />
+                </IonButton>
+              </IonCol>
+            </IonRow>
+
+            {/* Connection Status */}
+            <IonRow>
+              <IonCol size="12" style={{ textAlign: 'center', marginTop: '16px' }}>
+                {readyState() === WebSocket.OPEN ? (
+                  <IonText style={{ color: '#10b981', fontSize: '14px', fontWeight: '500' }}>
+                    🟢 Connected to server
+                  </IonText>
+                ) : (
+                  <IonText style={{ color: '#ef4444', fontSize: '14px', fontWeight: '500' }}>
+                    🔴 Disconnected from server
+                  </IonText>
+                )}
+              </IonCol>
+            </IonRow>
+
+          </IonGrid>
+        </div>
       </IonContent>
     </IonPage>
   );
