@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { createGesture } from '@ionic/react';
 
-// Define interface for IonContent DOM element
+/* --------------------------- DOM element type --------------------------- */
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
   scrollToBottom(duration?: number): Promise<void>;
-  // Add other methods if needed, e.g., scrollByPoint, scrollToPoint
 }
 
+/* -------------------------- Event type helpers -------------------------- */
 interface TapEvent {
   pointerId: number | null;
   clientX: number;
@@ -65,7 +65,7 @@ interface PointerEventData {
   eventType: 'down' | 'up' | 'move';
 }
 
-interface GestureData {
+export interface GestureData {
   swipes: SwipeEvent[];
   taps: TapEvent[];
   downEvents: PointerEventData[];
@@ -73,224 +73,191 @@ interface GestureData {
   moveEvents: PointerEventData[];
 }
 
-export const useGestureTracking = (contentRef: React.RefObject<IonContentElement | null>): GestureData => {
+/* ======================================================================= */
+/*                               🔑  HOOK                                  */
+/* ======================================================================= */
+export const useGestureTracking = (
+  contentRef: React.RefObject<IonContentElement | null>,
+  send: (payload: unknown) => void            // ← inject WebSocket sender
+): GestureData => {
+  /* ----------------------------- state ---------------------------------- */
   const [swipeEvents, setSwipeEvents] = useState<SwipeEvent[]>([]);
   const [tapEvents, setTapEvents] = useState<TapEvent[]>([]);
   const [downEvents, setDownEvents] = useState<PointerEventData[]>([]);
   const [upEvents, setUpEvents] = useState<PointerEventData[]>([]);
   const [moveEvents, setMoveEvents] = useState<PointerEventData[]>([]);
-  const downDataRef = useRef<Map<number, { x: number; y: number; timestamp: number }>>(new Map());
+  const downDataRef = useRef<Map<number, { x: number; y: number; ts: number }>>(
+    new Map()
+  );
   const gestureRef = useRef<any>(null);
 
+  /* --------------------------- thresholds -------------------------------- */
   const HOLD_THRESHOLD = 10;
   const SWIPE_DISTANCE_THRESHOLD = 15;
   const SWIPE_TIME_THRESHOLD = 1000;
   const TAP_TIME_THRESHOLD = 1000;
 
-  const getTargetInfo = (target: EventTarget | null): string => {
-    if (!target || !(target instanceof HTMLElement)) return 'N/A';
-    return `${target.tagName}${target.id ? `#${target.id}` : ''}`;
+  /* --------------------------- helpers ----------------------------------- */
+  const getTargetInfo = (t: EventTarget | null): string =>
+    t && t instanceof HTMLElement ? `${t.tagName}${t.id ? `#${t.id}` : ''}` : 'N/A';
+
+  /** Push one event to the WebSocket */
+  const push = (kind: 'tap' | 'swipe', data: TapEvent | SwipeEvent) => {
+    send({ type: kind, ts: Date.now(), data });
   };
 
-  const logPointerEvent = (event: PointerEvent, eventType: 'down' | 'up' | 'move') => {
-    const {
-      pointerId,
-      clientX,
-      clientY,
-      screenX,
-      screenY,
-      pageX,
-      pageY,
-      offsetX,
-      offsetY,
-      movementX,
-      movementY,
-      button,
-      buttons,
-      pointerType,
-      timeStamp,
-      target,
-    } = event;
-    const targetInfo = getTargetInfo(target);
-    const eventData: PointerEventData = {
-      pointerId,
-      clientX,
-      clientY,
-      screenX,
-      screenY,
-      pageX,
-      pageY,
-      offsetX,
-      offsetY,
-      movementX,
-      movementY,
-      button,
-      buttons,
-      pointerType,
+  const logPointerEvent = (
+    e: PointerEvent,
+    eventType: 'down' | 'up' | 'move'
+  ) => {
+    const detail: PointerEventData = {
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      screenX: e.screenX,
+      screenY: e.screenY,
+      pageX: e.pageX,
+      pageY: e.pageY,
+      offsetX: e.offsetX,
+      offsetY: e.offsetY,
+      movementX: e.movementX,
+      movementY: e.movementY,
+      button: e.button,
+      buttons: e.buttons,
+      pointerType: e.pointerType,
       timestamp: Date.now(),
-      target: targetInfo,
+      target: getTargetInfo(e.target),
       eventType,
     };
 
-    console.log(`${eventType.toUpperCase()}:
-  pointerId: ${pointerId}
-  clientX/Y: ${clientX}, ${clientY}
-  screenX/Y: ${screenX}, ${screenY}
-  pageX/Y: ${pageX}, ${pageY}
-  offsetX/Y: ${offsetX}, ${offsetY}
-  movementX/Y: ${movementX}, ${movementY}
-  button/buttons: ${button}/${buttons}
-  pointerType: ${pointerType}
-  timestamp: ${timeStamp}
-  target: ${targetInfo}`);
-
-    if (eventType === 'down') {
-      setDownEvents((prev) => [...prev, eventData]);
-    } else if (eventType === 'up') {
-      setUpEvents((prev) => [...prev, eventData]);
-    } else if (eventType === 'move') {
-      setMoveEvents((prev) => [...prev, eventData]);
-    }
+    if (eventType === 'down') setDownEvents((p) => [...p, detail]);
+    else if (eventType === 'up') setUpEvents((p) => [...p, detail]);
+    else setMoveEvents((p) => [...p, detail]);
   };
 
+  /* ------------------------ core gesture logic --------------------------- */
   const processGesture = (
-    startX: number,
-    startY: number,
-    endX: number,
-    endY: number,
-    startTime: number,
+    sx: number,
+    sy: number,
+    ex: number,
+    ey: number,
+    startTS: number,
     pointerId: number | null,
     pointerType: string | null,
-    event?: PointerEvent,
+    e?: PointerEvent,
     source?: string
   ) => {
-    const deltaX = endX - startX;
-    const deltaY = endY - startY;
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    const duration = Date.now() - startTime;
-    const timestamp = Date.now();
+    const dx = ex - sx;
+    const dy = ey - sy;
+    const dist = Math.hypot(dx, dy);
+    const dur = Date.now() - startTS;
+    const ts = Date.now();
 
-    if (distance < HOLD_THRESHOLD && duration < TAP_TIME_THRESHOLD) {
-      const tapEvent: TapEvent = {
+    if (dist < HOLD_THRESHOLD && dur < TAP_TIME_THRESHOLD) {
+      const tap: TapEvent = {
         pointerId,
-        clientX: endX,
-        clientY: endY,
-        screenX: event?.screenX || endX,
-        screenY: event?.screenY || endY,
-        pageX: event?.pageX || endX,
-        pageY: event?.pageY || endY,
-        offsetX: event?.offsetX || 0,
-        offsetY: event?.offsetY || 0,
-        movementX: event?.movementX || 0,
-        movementY: event?.movementY || 0,
-        button: event?.button || 0,
-        buttons: event?.buttons || 0,
-        duration,
-        timestamp,
-        pointerType: pointerType || 'gesture',
-        target: event ? getTargetInfo(event.target) : 'N/A',
+        clientX: ex,
+        clientY: ey,
+        screenX: e?.screenX ?? ex,
+        screenY: e?.screenY ?? ey,
+        pageX: e?.pageX ?? ex,
+        pageY: e?.pageY ?? ey,
+        offsetX: e?.offsetX ?? 0,
+        offsetY: e?.offsetY ?? 0,
+        movementX: e?.movementX ?? 0,
+        movementY: e?.movementY ?? 0,
+        button: e?.button ?? 0,
+        buttons: e?.buttons ?? 0,
+        duration: dur,
+        timestamp: ts,
+        pointerType: pointerType ?? 'gesture',
+        target: e ? getTargetInfo(e.target) : 'N/A',
         source,
       };
-      setTapEvents((prev) => [...prev, tapEvent]);
-      console.log('Tap event recorded:', tapEvent);
-    } else if (duration < SWIPE_TIME_THRESHOLD && distance > SWIPE_DISTANCE_THRESHOLD) {
+      setTapEvents((p) => [...p, tap]);
+      push('tap', tap); // 🚀 send
+    } else if (dur < SWIPE_TIME_THRESHOLD && dist > SWIPE_DISTANCE_THRESHOLD) {
       const direction =
-        Math.abs(deltaX) > Math.abs(deltaY) ? (deltaX > 0 ? 'right' : 'left') : (deltaY > 0 ? 'down' : 'up');
-      const swipeEvent: SwipeEvent = {
+        Math.abs(dx) > Math.abs(dy)
+          ? dx > 0
+            ? 'right'
+            : 'left'
+          : dy > 0
+          ? 'down'
+          : 'up';
+      const swipe: SwipeEvent = {
         pointerId,
-        startX,
-        startY,
-        endX,
-        endY,
-        deltaX,
-        deltaY,
-        distance,
-        duration,
+        startX: sx,
+        startY: sy,
+        endX: ex,
+        endY: ey,
+        deltaX: dx,
+        deltaY: dy,
+        distance: dist,
+        duration: dur,
         direction,
-        timestamp,
-        pointerType: pointerType || 'gesture',
+        timestamp: ts,
+        pointerType: pointerType ?? 'gesture',
         source,
       };
-      setSwipeEvents((prev) => [...prev, swipeEvent]);
-      console.log('Swipe event recorded:', swipeEvent);
-    } else {
-      console.log('Gesture not classified as tap or swipe');
+      setSwipeEvents((p) => [...p, swipe]);
+      push('swipe', swipe); // 🚀 send
     }
   };
 
+  /* --------------------------- wiring events ----------------------------- */
   useEffect(() => {
-    const contentEl = contentRef.current;
-    if (!contentEl) return;
+    const el = contentRef.current;
+    if (!el) return;
 
-    const handlePointerDown = (event: PointerEvent) => {
-      logPointerEvent(event, 'down');
-      downDataRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY, timestamp: Date.now() });
+    /* — pointer listeners — */
+    const onDown = (e: PointerEvent) => {
+      logPointerEvent(e, 'down');
+      downDataRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY, ts: Date.now() });
     };
-
-    const handlePointerUp = (event: PointerEvent) => {
-      logPointerEvent(event, 'up');
-      const downData = downDataRef.current.get(event.pointerId);
-      if (downData) {
-        processGesture(
-          downData.x,
-          downData.y,
-          event.clientX,
-          event.clientY,
-          downData.timestamp,
-          event.pointerId,
-          event.pointerType,
-          event
-        );
-        downDataRef.current.delete(event.pointerId);
+    const onUp = (e: PointerEvent) => {
+      logPointerEvent(e, 'up');
+      const d = downDataRef.current.get(e.pointerId);
+      if (d) {
+        processGesture(d.x, d.y, e.clientX, e.clientY, d.ts, e.pointerId, e.pointerType, e);
+        downDataRef.current.delete(e.pointerId);
       }
     };
+    const onMove = (e: PointerEvent) => logPointerEvent(e, 'move');
 
-    const handlePointerMove = (event: PointerEvent) => {
-      logPointerEvent(event, 'move');
-    };
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointermove', onMove);
 
-    contentEl.addEventListener('pointerdown', handlePointerDown);
-    contentEl.addEventListener('pointerup', handlePointerUp);
-    contentEl.addEventListener('pointermove', handlePointerMove);
-
-    contentEl.getScrollElement().then((scrollEl: HTMLElement) => {
-      if (!scrollEl) return;
-      const gesture = createGesture({
+    /* — Ionic gesture for scroll area swipes — */
+    el.getScrollElement().then((scrollEl) => {
+      const g = createGesture({
         el: scrollEl,
         gestureName: 'swipe-gesture',
         threshold: 0,
-        onStart: (detail) => {
-          downDataRef.current.set(-1, { x: detail.startX, y: detail.startY, timestamp: Date.now() });
+        onStart: (d) => {
+          downDataRef.current.set(-1, { x: d.startX, y: d.startY, ts: Date.now() });
         },
-        onEnd: (detail) => {
-          const downData = downDataRef.current.get(-1);
-          if (downData) {
-            processGesture(
-              downData.x,
-              downData.y,
-              detail.currentX,
-              detail.currentY,
-              downData.timestamp,
-              null,
-              'gesture',
-              undefined,
-              'gesture'
-            );
+        onEnd: (d) => {
+          const data = downDataRef.current.get(-1);
+          if (data) {
+            processGesture(data.x, data.y, d.currentX, d.currentY, data.ts, null, 'gesture', undefined, 'gesture');
             downDataRef.current.delete(-1);
           }
         },
       });
-      gesture.enable(true);
-      gestureRef.current = gesture;
+      g.enable(true);
+      gestureRef.current = g;
     });
 
     return () => {
-      contentEl.removeEventListener('pointerdown', handlePointerDown);
-      contentEl.removeEventListener('pointerup', handlePointerUp);
-      contentEl.removeEventListener('pointermove', handlePointerMove);
-      if (gestureRef.current) gestureRef.current.destroy();
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointermove', onMove);
+      gestureRef.current?.destroy();
     };
-  }, [contentRef]);
+  }, [contentRef, send]); // re‑wire if send fn changes (rare)
 
+  /* -------------------------- expose arrays ------------------------------ */
   return { swipes: swipeEvents, taps: tapEvents, downEvents, upEvents, moveEvents };
 };
