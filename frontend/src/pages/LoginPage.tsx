@@ -104,14 +104,14 @@ const LoginPage: React.FC = () => {
             className="h-12 rounded-lg bg-indigo-600 text-base font-semibold hover:bg-indigo-700"
             onClick={handleSignup}
           >
-            Sign Up
+            Login
           </IonButton>
 
           {/* Login link */}
           <p className="mt-6 text-center text-sm text-gray-600">
             New here?{' '}
             <a href="#" className="font-medium text-indigo-600 hover:underline">
-              Sign up
+              Signup
             </a>
           </p>
         </div>
