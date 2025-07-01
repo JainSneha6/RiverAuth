@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { useGestureTracking } from '../hooks/useGestureTracking'; // Adjust path as needed
+import { useGestureTracking } from '../hooks/useGestureTracking'; 
+import { useDeviceTracking } from '../hooks/useDeviceTracking';
 
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
@@ -13,7 +14,7 @@ const DashboardPage: React.FC = () => {
   const [send, setSend] = useState<(payload: unknown) => void>(() => () => {});
 
   useEffect(() => {
-    const ws = new WebSocket('ws://your-websocket-url'); 
+    const ws = new WebSocket('ws://localhost:8081'); 
 
     ws.onopen = () => {
       console.log('WebSocket connected');
@@ -42,7 +43,8 @@ const DashboardPage: React.FC = () => {
   }, []); 
 
   const { taps } = useGestureTracking(contentRef, send);
-  console.log(taps)
+  const { deviceInfo } = useDeviceTracking(send);
+  console.log(deviceInfo)
 
   return (
     <Layout contentRef={contentRef}>
