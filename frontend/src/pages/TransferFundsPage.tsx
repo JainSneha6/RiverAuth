@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+import { useGestureTracking } from '../hooks/useGestureTracking';
 
 type Props = {};
 
@@ -35,6 +36,11 @@ const recipients = [
   { id: 4, name: 'Priya' },
 ];
 
+interface IonContentElement extends HTMLElement {
+  getScrollElement(): Promise<HTMLElement>;
+  scrollToBottom(duration?: number): Promise<void>;
+}
+
 const TransferFundsPage: React.FC<Props> = () => {
   const [selectedTab, setSelectedTab] = useState<'Transaction' | 'Recipient'>('Transaction');
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,8 +53,44 @@ const TransferFundsPage: React.FC<Props> = () => {
         )
       : recipients.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const contentRef = useRef<IonContentElement | null>(null);
+    
+  const [send, setSend] = useState<(payload: unknown) => void>(() => () => {});
+  
+    useEffect(() => {
+        const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
+    
+        ws.onopen = () => {
+          console.log('WebSocket connected');
+          setSend(() => (payload: unknown) => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify(payload));
+            }
+          });
+        };
+    
+        ws.onmessage = (event) => {
+          console.log('Received:', event.data);
+        };
+    
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+    
+        ws.onclose = () => {
+          console.log('WebSocket closed');
+        };
+    
+        return () => {
+          ws.close();
+        };
+      }, []); 
+  
+      const { taps } = useGestureTracking(contentRef, send);
+      console.log(taps);
+
   return (
-    <Layout background="bg-white">
+    <Layout background="bg-white" contentRef={contentRef}>
       {/* Title */}
       <h1 className="mt-5 w-full text-2xl font-bold text-black">Transfer Funds</h1>
 

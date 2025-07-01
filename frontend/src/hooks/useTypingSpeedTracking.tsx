@@ -1,25 +1,21 @@
 import { useState, useRef } from 'react';
 
 export interface TypingEvent {
-  field: string;      // input name
-  length: number;     // characters typed
-  duration: number;   // ms from first to last keystroke
-  wpm: number;        // crude words‑per‑minute
-  timestamp: number;  // epoch when we log
+  field: string;      
+  length: number;    
+  duration: number;   
+  wpm: number;        
+  timestamp: number; 
 }
 
-/* ============================================================= */
-/*   Hook                                                         */
-/* ============================================================= */
 export const useTypingSpeedTracking = (
-  send: (payload: unknown) => void           // 👈 inject WebSocket sender
+  send: (payload: unknown) => void          
 ) => {
   const [typingEvents, setTypingEvents] = useState<TypingEvent[]>([]);
   const typingDataRef = useRef<
     Record<string, { start: number; last: number }>
   >({});
 
-  /* 1️⃣  call on every keypress / input change ------------------- */
   const onInputChange =
     (field: string) => (e: CustomEvent<{ value: string }>) => {
       const now = Date.now();
@@ -30,10 +26,9 @@ export const useTypingSpeedTracking = (
       }
     };
 
-  /* 2️⃣  call on blur (or submit) to finalize the metric --------- */
   const recordTypingEvent = (field: string, value: string | boolean) => {
     const data = typingDataRef.current[field];
-    if (!data) return; // nothing recorded
+    if (!data) return; 
 
     const { start, last } = data;
     const duration = last - start;
@@ -53,7 +48,6 @@ export const useTypingSpeedTracking = (
     setTypingEvents((prev) => [...prev, event]);
     delete typingDataRef.current[field];
 
-    /* 🚀 stream to WebSocket immediately */
     send({ type: 'typing', ts: Date.now(), data: event });
   };
 

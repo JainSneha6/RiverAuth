@@ -1,13 +1,12 @@
-// src/pages/PayBillsPage.tsx
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
+import { useGestureTracking } from '../hooks/useGestureTracking';
 
 interface ActionItem {
   label: string;
-  icon?: string; // path under /public/icons/
+  icon?: string; 
 }
 
-/* ── Data ──────────────────────────────────────────────────────────────────────── */
 const quickActions: ActionItem[] = [
   { label: 'Pay A', icon: '/icons/icon-a.png' },
   { label: 'Pay B', icon: '/icons/icon-b.png' },
@@ -36,14 +35,53 @@ const addPayeeOptions: ActionItem[] = [
   { label: 'Water',            icon: '/icons/water.png' },
 ];
 
-/* ── Page ──────────────────────────────────────────────────────────────────────── */
+interface IonContentElement extends HTMLElement {
+  getScrollElement(): Promise<HTMLElement>;
+  scrollToBottom(duration?: number): Promise<void>;
+}
+
 const PayBillsPage: React.FC = () => {
+
+  const contentRef = useRef<IonContentElement | null>(null);
+  
+  const [send, setSend] = useState<(payload: unknown) => void>(() => () => {});
+
+  useEffect(() => {
+      const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
+  
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setSend(() => (payload: unknown) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(payload));
+          }
+        });
+      };
+  
+      ws.onmessage = (event) => {
+        console.log('Received:', event.data);
+      };
+  
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+  
+      ws.onclose = () => {
+        console.log('WebSocket closed');
+      };
+  
+      return () => {
+        ws.close();
+      };
+    }, []); 
+
+    const { taps } = useGestureTracking(contentRef, send);
+    console.log(taps);
+  
   return (
-    <Layout background="bg-white">
-      {/* Title */}
+    <Layout background="bg-white" contentRef={contentRef}>
       <div className="mt-5 w-full text-2xl font-bold text-black">Pay Bills</div>
 
-      {/* ── Quick Pay ─────────────────────────────────────────────────────────── */}
       <div className="mt-5 w-full">
         <div className="text-black text-lg font-medium mb-2">Quick Pay</div>
         <div className="w-full overflow-x-auto">
@@ -64,7 +102,6 @@ const PayBillsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Saved Payees ──────────────────────────────────────────────────────── */}
       <div className="mt-8 w-full">
         <div className="text-black text-lg font-medium mb-2">Saved</div>
         <div className="w-full overflow-x-auto">
@@ -86,7 +123,6 @@ const PayBillsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Add Payee ─────────────────────────────────────────────────────────── */}
       <div className="mt-8 w-full">
         <div className="text-black text-lg font-medium mb-2">Add Payee</div>
         <div className="grid grid-cols-4 gap-4">

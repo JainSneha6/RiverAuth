@@ -8,31 +8,30 @@ export const useGeolocationTracking = (send: (payload: unknown) => void, apiKey:
 
         const startTracking = async () => {
             try {
-                // Request geolocation permissions
-                // await Geolocation.requestPermissions();
+                await Geolocation.requestPermissions();
 
-                // // Watch position for geolocation updates
-                // watchId = await Geolocation.watchPosition(
-                //     { enableHighAccuracy: true, timeout: 10000 },
-                //     (position, err) => {
-                //         if (err) {
-                //             console.error('Geolocation error:', err);
-                //             return;
-                //         }
-                //         if (position) {
-                //             const geoData = {
-                //                 type: 'geolocation',
-                //                 timestamp: Date.now(),
-                //                 latitude: position.coords.latitude,
-                //                 longitude: position.coords.longitude,
-                //                 altitude: position.coords.altitude || null,
-                //                 accuracy: position.coords.accuracy,
-                //                 speed: position.coords.speed || null,
-                //             };
-                //             send(geoData); // Send geolocation data
-                //         }
-                //     }
-                // );
+                // Watch position for geolocation updates
+                watchId = await Geolocation.watchPosition(
+                    { enableHighAccuracy: true, timeout: 10000 },
+                    (position, err) => {
+                        if (err) {
+                            console.error('Geolocation error:', err);
+                            return;
+                        }
+                        if (position) {
+                            const geoData = {
+                                type: 'geolocation',
+                                timestamp: Date.now(),
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                altitude: position.coords.altitude || null,
+                                accuracy: position.coords.accuracy,
+                                speed: position.coords.speed || null,
+                            };
+                            send(geoData); // Send geolocation data
+                        }
+                    }
+                );
 
                 // Periodically fetch IP address and region using a secure API
                 let lastRegion: string | null = null;

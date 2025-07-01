@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { createGesture } from '@ionic/react';
 
-/* --------------------------- DOM element type --------------------------- */
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
   scrollToBottom(duration?: number): Promise<void>;
 }
 
-/* -------------------------- Event type helpers -------------------------- */
 interface TapEvent {
   pointerId: number | null;
   clientX: number;
@@ -73,14 +71,10 @@ export interface GestureData {
   moveEvents: PointerEventData[];
 }
 
-/* ======================================================================= */
-/*                               🔑  HOOK                                  */
-/* ======================================================================= */
 export const useGestureTracking = (
   contentRef: React.RefObject<IonContentElement | null>,
-  send: (payload: unknown) => void            // ← inject WebSocket sender
+  send: (payload: unknown) => void           
 ): GestureData => {
-  /* ----------------------------- state ---------------------------------- */
   const [swipeEvents, setSwipeEvents] = useState<SwipeEvent[]>([]);
   const [tapEvents, setTapEvents] = useState<TapEvent[]>([]);
   const [downEvents, setDownEvents] = useState<PointerEventData[]>([]);
@@ -91,17 +85,14 @@ export const useGestureTracking = (
   );
   const gestureRef = useRef<any>(null);
 
-  /* --------------------------- thresholds -------------------------------- */
   const HOLD_THRESHOLD = 10;
   const SWIPE_DISTANCE_THRESHOLD = 15;
   const SWIPE_TIME_THRESHOLD = 1000;
   const TAP_TIME_THRESHOLD = 1000;
 
-  /* --------------------------- helpers ----------------------------------- */
   const getTargetInfo = (t: EventTarget | null): string =>
     t && t instanceof HTMLElement ? `${t.tagName}${t.id ? `#${t.id}` : ''}` : 'N/A';
 
-  /** Push one event to the WebSocket */
   const push = (kind: 'tap' | 'swipe', data: TapEvent | SwipeEvent) => {
     send({ type: kind, ts: Date.now(), data });
   };
@@ -135,7 +126,6 @@ export const useGestureTracking = (
     else setMoveEvents((p) => [...p, detail]);
   };
 
-  /* ------------------------ core gesture logic --------------------------- */
   const processGesture = (
     sx: number,
     sy: number,
@@ -175,7 +165,7 @@ export const useGestureTracking = (
         source,
       };
       setTapEvents((p) => [...p, tap]);
-      push('tap', tap); // 🚀 send
+      push('tap', tap); 
     } else if (dur < SWIPE_TIME_THRESHOLD && dist > SWIPE_DISTANCE_THRESHOLD) {
       const direction =
         Math.abs(dx) > Math.abs(dy)
@@ -201,16 +191,14 @@ export const useGestureTracking = (
         source,
       };
       setSwipeEvents((p) => [...p, swipe]);
-      push('swipe', swipe); // 🚀 send
+      push('swipe', swipe); 
     }
   };
 
-  /* --------------------------- wiring events ----------------------------- */
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
 
-    /* — pointer listeners — */
     const onDown = (e: PointerEvent) => {
       logPointerEvent(e, 'down');
       downDataRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY, ts: Date.now() });
@@ -229,7 +217,6 @@ export const useGestureTracking = (
     el.addEventListener('pointerup', onUp);
     el.addEventListener('pointermove', onMove);
 
-    /* — Ionic gesture for scroll area swipes — */
     el.getScrollElement().then((scrollEl) => {
       const g = createGesture({
         el: scrollEl,
@@ -256,8 +243,7 @@ export const useGestureTracking = (
       el.removeEventListener('pointermove', onMove);
       gestureRef.current?.destroy();
     };
-  }, [contentRef, send]); // re‑wire if send fn changes (rare)
+  }, [contentRef, send]); 
 
-  /* -------------------------- expose arrays ------------------------------ */
   return { swipes: swipeEvents, taps: tapEvents, downEvents, upEvents, moveEvents };
 };

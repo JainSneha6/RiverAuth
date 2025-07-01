@@ -2,16 +2,25 @@ import { IonContent, IonPage } from '@ionic/react';
 import React, { ReactNode } from 'react';
 import TopMenu from './TopMenu';
 
+// Custom interface for IonContent DOM element
+interface IonContentElement extends HTMLElement {
+  getScrollElement(): Promise<HTMLElement>;
+  scrollToBottom(duration?: number): Promise<void>;
+}
+
+// Define the props interface, including contentRef
 type Props = {
-  background?: string; // Optional if you want dynamic gradients later
+  background?: string; // Optional background prop
   children: ReactNode;
+  contentRef?: React.RefObject<IonContentElement | null>; // Allow null to match useGestureTracking
 };
 
-const Layout: React.FC<Props> = ({ background, children }) => {
+const Layout: React.FC<Props> = ({ background, children, contentRef }) => {
   return (
     <IonPage className="h-full">
       <IonContent
         fullscreen
+        ref={contentRef as any} // Type assertion to bypass HTMLIonContentElement mismatch
         style={{ '--background': 'transparent' } as React.CSSProperties}
       >
         <div

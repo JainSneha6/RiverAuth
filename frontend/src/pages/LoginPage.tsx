@@ -1,23 +1,22 @@
 import {
   IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
   IonContent,
   IonInput,
   IonLabel,
   IonButton,
   IonToast,
   IonIcon,
-  IonText,
 } from '@ionic/react';
-import { personAdd, lockClosed, mail } from 'ionicons/icons';
-import { useState } from 'react';
+import { personAdd, lockClosed } from 'ionicons/icons';
+import { useState,useRef, useEffect } from 'react';
+import { useGestureTracking } from '../hooks/useGestureTracking';
+
+interface IonContentElement extends HTMLElement {
+  getScrollElement(): Promise<HTMLElement>;
+  scrollToBottom(duration?: number): Promise<void>;
+}
 
 const LoginPage: React.FC = () => {
-  // ────────────────────────────────────────────────────────────────────────────────
-  // Local state
-  // ────────────────────────────────────────────────────────────────────────────────
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,11 +24,12 @@ const LoginPage: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
-  // ────────────────────────────────────────────────────────────────────────────────
-  // Helpers
-  // ────────────────────────────────────────────────────────────────────────────────
   const passwordsMatch = password === confirm;
   const allFilled = name && email && password && confirm;
+
+  const contentRef = useRef<IonContentElement | null>(null);
+
+  const [send, setSend] = useState<(payload: unknown) => void>(() => () => {});
 
   const handleSignup = () => {
     if (!allFilled) {
@@ -42,26 +42,49 @@ const LoginPage: React.FC = () => {
       setShowToast(true);
       return;
     }
-    // TODO: call your signup API here
     setToastMsg('Account created! 🎉');
     setShowToast(true);
   };
 
-  // ────────────────────────────────────────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
+
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setSend(() => (payload: unknown) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(payload));
+        }
+      });
+    };
+
+    ws.onmessage = (event) => {
+      console.log('Received:', event.data);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket closed');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []); 
+
+  const { taps } = useGestureTracking(contentRef, send);
+  console.log(taps);
+
   return (
     <IonPage className="h-full">
-      {/* ── Header ─────────────────────────────────────────────────────────────── */}
-     
-
-      {/* ── Content ─────────────────────────────────────────────────────────────── */}
-      <IonContent fullscreen >
+      <IonContent fullscreen ref={contentRef as any}>
         
         <div className="flex flex-col items-center bg-white">
         <img src="/LoginHeader.png" alt="Logo" className="w-full" />
         <div className="w-full max-w-md px-6 py-8">
-          {/* Name */}
           <div className='w-full text-center text-black font-bold text-3xl mb-10'>Banking that Knows It's <div className='text-blue-500'>You</div></div>
           <div className="mb-4">
             <IonLabel className="mb-1 block text-sm font-medium text-gray-700">
@@ -78,9 +101,6 @@ const LoginPage: React.FC = () => {
             </IonInput>
           </div>
 
-          
-
-          {/* Password */}
           <div className="mb-4">
             <IonLabel className="mb-1 block text-sm font-medium text-gray-700">
               Password
@@ -98,7 +118,6 @@ const LoginPage: React.FC = () => {
           </div>
 
 
-          {/* Signup button */}
           <IonButton
             expand="block"
             className="h-12 rounded-lg bg-indigo-600 text-base font-semibold hover:bg-indigo-700"
@@ -107,7 +126,6 @@ const LoginPage: React.FC = () => {
             Login
           </IonButton>
 
-          {/* Login link */}
           <p className="mt-6 text-center text-sm text-gray-600">
             New here?{' '}
             <a href="#" className="font-medium text-indigo-600 hover:underline">
@@ -115,8 +133,7 @@ const LoginPage: React.FC = () => {
             </a>
           </p>
         </div>
-
-        {/* Toast feedback */}
+        
         <IonToast
           isOpen={showToast}
           message={toastMsg}
