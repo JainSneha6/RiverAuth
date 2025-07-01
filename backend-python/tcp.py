@@ -136,7 +136,7 @@ async def handle_gesture_data(websocket, data, client_ip):
 
 async def main():
     # Try different ports if 8080 is busy
-    ports_to_try = [8080, 8081, 8082, 8083, 8084]
+    ports_to_try = [8081, 8080, 8082, 8083, 8084] #frontend listens to 8081, listen to that first
     
     for port in ports_to_try:
         try:
