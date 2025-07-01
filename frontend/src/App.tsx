@@ -35,10 +35,12 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PayBillsPage from './pages/PayBillsPage';
 import TransferFundsPage from './pages/TransferFundsPage';
+import { WebSocketProvider } from './hooks/useWebSocketContext';
 
 setupIonicReact();
 
 const App: React.FC = () => (
+  <WebSocketProvider url="ws://localhost:8081">
   <IonApp>
     <IonReactRouter>
       <IonRouterOutlet>
@@ -66,6 +68,7 @@ const App: React.FC = () => (
       </IonRouterOutlet>
     </IonReactRouter>
   </IonApp>
+  </WebSocketProvider>
 );
 
 export default App;

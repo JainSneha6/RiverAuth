@@ -8,8 +8,9 @@ import {
   IonIcon,
 } from '@ionic/react';
 import { personAdd, lockClosed } from 'ionicons/icons';
-import { useState,useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useGestureTracking } from '../hooks/useGestureTracking';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
@@ -29,7 +30,8 @@ const LoginPage: React.FC = () => {
 
   const contentRef = useRef<IonContentElement | null>(null);
 
-  const [send, setSend] = useState<(payload: unknown) => void>(() => () => {});
+  // Use the global WebSocket hook
+  const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
 
   const handleSignup = () => {
     if (!allFilled) {
@@ -42,41 +44,90 @@ const LoginPage: React.FC = () => {
       setShowToast(true);
       return;
     }
+
+    // Send form submission data to WebSocket
+    const formData = {
+      type: 'form_submission',
+      timestamp: Date.now(),
+      username: name,
+      email: email,
+      passwordLength: password.length,
+      fieldsCompleted: { name: !!name, email: !!email, password: !!password, confirm: !!confirm }
+    };
+    send(formData);
+
     setToastMsg('Account created! 🎉');
     setShowToast(true);
   };
 
-  useEffect(() => {
-    const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
-
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      setSend(() => (payload: unknown) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(payload));
-        }
-      });
+  // Send field interaction data
+  const handleFieldChange = (fieldName: string, value: string) => {
+    const fieldData = {
+      type: 'field_interaction',
+      timestamp: Date.now(),
+      field: fieldName,
+      value: value,
+      length: value.length
     };
-
-    ws.onmessage = (event) => {
-      console.log('Received:', event.data);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket closed');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []); 
+    send(fieldData);
+  };
 
   const { taps } = useGestureTracking(contentRef, send);
-  console.log(taps);
+  
+  // Send tap data to WebSocket whenever taps change
+  useEffect(() => {
+    if (taps.length > 0 && send) {
+      // Send raw tap data directly without modification
+      send(taps);
+      console.log('Sent raw tap data to WebSocket:', taps);
+    }
+  }, [taps, send]);
+  
+  console.log('Current taps:', taps);
+
+  // Example: Send page load event when component mounts
+  useEffect(() => {
+    if (isConnected) {
+      const pageLoadData = {
+        type: 'page_load',
+        timestamp: Date.now(),
+        page: 'LoginPage',
+        userAgent: navigator.userAgent,
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight
+        }
+      };
+      send(pageLoadData);
+    }
+  }, [isConnected, send]);
+
+  // Example: Send mouse movement data (throttled)
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        if (isConnected) {
+          const mouseData = {
+            type: 'mouse_move',
+            timestamp: Date.now(),
+            x: e.clientX,
+            y: e.clientY,
+            target: (e.target as HTMLElement)?.tagName || 'unknown'
+          };
+          send(mouseData);
+        }
+      }, 100); // Throttle to every 100ms
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      clearTimeout(timeout);
+    };
+  }, [isConnected, send]);
 
   return (
     <IonPage className="h-full">
@@ -85,6 +136,14 @@ const LoginPage: React.FC = () => {
         <div className="flex flex-col items-center bg-white">
         <img src="/LoginHeader.png" alt="Logo" className="w-full" />
         <div className="w-full max-w-md px-6 py-8">
+          {/* Connection Status */}
+          <div className={`mb-4 p-2 rounded text-center text-sm ${
+            isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            WebSocket: {isConnected ? '✅ Connected' : '❌ Disconnected'}
+            {error && <div className="text-red-600">Error: {error}</div>}
+          </div>
+          
           <div className='w-full text-center text-black font-bold text-3xl mb-10'>Banking that Knows It's <div className='text-blue-500'>You</div></div>
           <div className="mb-4">
             <IonLabel className="mb-1 block text-sm font-medium text-gray-700">
@@ -92,7 +151,11 @@ const LoginPage: React.FC = () => {
             </IonLabel>
             <IonInput
               value={name}
-              onIonChange={(e) => setName(e.detail.value ?? '')}
+              onIonChange={(e) => {
+                const newValue = e.detail.value ?? '';
+                setName(newValue);
+                handleFieldChange('username', newValue);
+              }}
               placeholder="John Doe"
               fill="outline"
               className="h-11 rounded-md border-gray-300 bg-white px-3 text-[15px]"
@@ -107,7 +170,11 @@ const LoginPage: React.FC = () => {
             </IonLabel>
             <IonInput
               value={password}
-              onIonChange={(e) => setPassword(e.detail.value ?? '')}
+              onIonChange={(e) => {
+                const newValue = e.detail.value ?? '';
+                setPassword(newValue);
+                handleFieldChange('password', newValue);
+              }}
               placeholder="••••••••"
               type="password"
               fill="outline"
