@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useHistory } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking'; 
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
@@ -11,6 +12,7 @@ interface IonContentElement extends HTMLElement {
 
 const DashboardPage: React.FC = () => {
   const contentRef = useRef<IonContentElement>(null);
+  const history = useHistory();
 
   // Use the global WebSocket hook
   const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
@@ -31,6 +33,55 @@ const DashboardPage: React.FC = () => {
     send(buttonData);
     console.log(`Button clicked: ${buttonName}`, buttonData);
   };
+
+  // Dummy recent actions data
+  const recentActions = [
+    {
+      type: 'transaction',
+      title: 'Money Sent',
+      subtitle: 'To: Paytm Wallet',
+      amount: '-₹1,200.00',
+      date: '2024-06-10',
+      icon: '/paytm.webp',
+      color: 'text-red-600',
+    },
+    {
+      type: 'transaction',
+      title: 'Money Received',
+      subtitle: 'From: Amazon Pay',
+      amount: '+₹2,500.00',
+      date: '2024-06-09',
+      icon: '/amazon_pay.png',
+      color: 'text-green-600',
+    },
+    {
+      type: 'update',
+      title: 'Profile Updated',
+      subtitle: 'Address changed',
+      status: 'Success',
+      date: '2024-06-08',
+      icon: '/contact.png',
+      color: 'text-blue-600',
+    },
+    {
+      type: 'transaction',
+      title: 'Bill Paid',
+      subtitle: 'Electricity Bill',
+      amount: '-₹3,000.00',
+      date: '2024-06-07',
+      icon: '/bills.png',
+      color: 'text-red-600',
+    },
+    {
+      type: 'update',
+      title: 'Card Activated',
+      subtitle: 'HDFC Credit Card',
+      status: 'Activated',
+      date: '2024-06-06',
+      icon: '/hdfc.png',
+      color: 'text-green-600',
+    },
+  ];
 
   return (
     <Layout contentRef={contentRef}>
@@ -67,14 +118,14 @@ const DashboardPage: React.FC = () => {
           </button>
           <button 
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => handleButtonClick('Pay Bills')}
+            onClick={() => { handleButtonClick('Pay Bills'); history.push('/pay-bills'); }}
           >
             <img src="/bills.png" alt="Pay Bills" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Pay Bills</span>
           </button>
           <button 
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => handleButtonClick('Contact Us')}
+            onClick={() => { handleButtonClick('Contact Us'); history.push('/profile'); }}
           >
             <img src="/contact.png" alt="Contact" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Contact Us</span>
@@ -88,7 +139,7 @@ const DashboardPage: React.FC = () => {
           </button>
           <button 
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => handleButtonClick('Transfer Funds')}
+            onClick={() => { handleButtonClick('Transfer Funds'); history.push('/transfer-funds'); }}
           >
             <img src="/money and phone.png" alt="Transfer" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Transfer Funds</span>
@@ -97,31 +148,31 @@ const DashboardPage: React.FC = () => {
       </div>
 
       <div className='mt-5 w-full'>
-        <div className='text-black w-full'>Recent Actions</div>
-        <button 
-          className='bg-white h-12 w-full my-2 rounded-md'
-          onClick={() => handleButtonClick('Recent Action 1')}
-        >
-          Recent Transaction #1
-        </button>
-        <button 
-          className='bg-white h-12 w-full my-2 rounded-md'
-          onClick={() => handleButtonClick('Recent Action 2')}
-        >
-          Recent Transaction #2
-        </button>
-        <button 
-          className='bg-white h-12 w-full my-2 rounded-md'
-          onClick={() => handleButtonClick('Recent Action 3')}
-        >
-          Recent Transaction #3
-        </button>
-        <button 
-          className='bg-white h-12 w-full my-2 rounded-md'
-          onClick={() => handleButtonClick('Recent Action 4')}
-        >
-          Recent Transaction #4
-        </button>
+        <div className='text-black w-full font-semibold text-lg mb-2'>Recent Actions</div>
+        <div className="flex flex-col gap-3">
+          {recentActions.map((action, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded-lg shadow flex items-center gap-4 p-4 hover:shadow-lg transition cursor-pointer border border-gray-100"
+              onClick={() => handleButtonClick(action.title)}
+            >
+              <img src={action.icon} alt="icon" className="h-12 w-12 rounded-md object-contain bg-gray-50" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-black truncate">{action.title}</div>
+                  {action.amount && (
+                    <div className={`font-bold text-lg ml-2 ${action.color}`}>{action.amount}</div>
+                  )}
+                  {action.status && (
+                    <div className={`font-semibold ml-2 px-2 py-1 rounded ${action.color} bg-blue-50 text-xs`}>{action.status}</div>
+                  )}
+                </div>
+                <div className="text-gray-500 text-sm truncate">{action.subtitle}</div>
+                <div className="text-gray-400 text-xs mt-1">{action.date}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </Layout>
   );

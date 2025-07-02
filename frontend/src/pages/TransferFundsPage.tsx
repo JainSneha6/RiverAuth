@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking';
+import { User } from 'lucide-react';
 
 type Props = {};
 
@@ -92,26 +93,27 @@ const TransferFundsPage: React.FC<Props> = () => {
   return (
     <Layout background="bg-white" contentRef={contentRef}>
       {/* Title */}
-      <h1 className="mt-5 w-full text-2xl font-bold text-black">Transfer Funds</h1>
+      <div className="w-full text-2xl font-bold text-black mb-2 mt-5">Transfer Funds</div>
 
       {/* Balance Card */}
-      <div className="mt-5 w-full rounded-md border border-blue-500 bg-[#01A0E3] p-5 text-center text-white">
-        <p>Your Balance</p>
-        <p className="text-3xl font-bold">₹69,420.00</p>
+      <div className="w-full rounded-lg border border-blue-200 bg-blue-50 p-5 flex flex-col items-center mb-6 shadow-sm">
+        <div className="text-gray-700 text-base">Your Balance</div>
+        <div className="text-4xl font-bold text-blue-700 mt-1">₹69,420.00</div>
       </div>
 
       {/* Toggle Tabs */}
-      <div className="mt-6 w-full h-8 grid grid-cols-2 gap-0">
+      <div className="w-full flex mb-4 gap-2">
         {(['Transaction', 'Recipient'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setSelectedTab(tab)}
-            className={`w-full rounded-md px-5 py-3 text-base font-medium text-center transition-colors
+            className={`flex-1 py-4 rounded-l-md first:rounded-l-md last:rounded-r-md text-base font-semibold transition-colors
               ${
                 selectedTab === tab
-                  ? 'bg-[#01A0E3] text-white'
+                  ? 'bg-blue-600 text-white shadow'
                   : 'bg-gray-100 text-gray-700 border border-gray-300'
               }`}
+            style={{ minHeight: '48px' }}
           >
             {tab}
           </button>
@@ -119,64 +121,71 @@ const TransferFundsPage: React.FC<Props> = () => {
       </div>
 
       {/* Search Bar */}
-      <div className="mt-4 w-full">
+      <div className="w-full mb-4">
         <input
           type="text"
           placeholder={`Search ${selectedTab.toLowerCase()}…`}
-          className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm"
+          className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-blue-200"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
       </div>
 
       {/* Add Button */}
-      <div className="mt-6 w-full">
+      <div className="w-full mb-4">
         <button
-          className="my-2 flex w-full items-center justify-center rounded-md border border-gray-400 bg-white px-4 py-3 text-sm text-gray-800"
+          className="w-full flex items-center justify-center rounded-md bg-blue-600 text-white font-semibold py-4 text-base shadow hover:bg-blue-700 transition"
+          style={{ minHeight: '56px' }}
         >
           + Add {selectedTab}
         </button>
       </div>
 
       {/* List Section */}
-     {/* List Section */}
-<div className="mt-4 w-full">
-  {filteredData.length > 0 ? (
-    filteredData.map(item => {
-      if (selectedTab === 'Transaction') {
-        const tx = item as (typeof transactions)[0];
-        return (
-          <div
-            key={tx.id}
-            className="my-2 w-full rounded-md border border-gray-400 bg-white px-4 py-3 text-sm text-gray-800"
-          >
-            <div className="flex flex-col gap-0.5">
-              <span className="text-base font-semibold">{tx.name}</span>
-              <span className="text-sm text-green-600 font-medium">{tx.amount}</span>
-              <span className="text-sm text-gray-600">{tx.account}</span>
-              <span className="text-xs text-gray-500">{tx.time}</span>
-            </div>
-          </div>
-        );
-      } else {
-        const recipient = item as (typeof recipients)[0];
-        return (
-          <div
-            key={recipient.id}
-            className="my-2 w-full rounded-md border border-gray-400 bg-white px-4 py-3 text-sm text-gray-800"
-          >
-            {recipient.name}
-          </div>
-        );
-      }
-    })
-  ) : (
-    <p className="mt-4 text-sm text-gray-500">
-      No {selectedTab.toLowerCase()}s found.
-    </p>
-  )}
-</div>
-
+      <div className="w-full flex flex-col gap-3">
+        {filteredData.length > 0 ? (
+          filteredData.map(item => {
+            if (selectedTab === 'Transaction') {
+              const tx = item as (typeof transactions)[0];
+              return (
+                <div
+                  key={tx.id}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 flex items-center gap-4 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="h-12 w-12 flex items-center justify-center rounded-full bg-blue-100 text-blue-700 font-bold text-xl">
+                    {tx.name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-black truncate">{tx.name}</div>
+                      <div className="font-bold text-green-600 text-lg ml-2">{tx.amount}</div>
+                    </div>
+                    <div className="text-gray-500 text-sm">{tx.account}</div>
+                    <div className="text-gray-400 text-xs mt-1">{tx.time}</div>
+                  </div>
+                </div>
+              );
+            } else {
+              const recipient = item as (typeof recipients)[0];
+              return (
+                <div
+                  key={recipient.id}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 flex items-center gap-4 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="h-12 w-12 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-700 font-bold text-xl">
+                    {recipient.name[0]}
+                  </div>
+                  <div className="font-semibold text-black">{recipient.name}</div>
+                </div>
+              );
+            }
+          })
+        ) : (
+          <p className="mt-4 text-sm text-gray-500 text-center">
+            No {selectedTab.toLowerCase()}s found.
+          </p>
+        )}
+      </div>
     </Layout>
   );
 };

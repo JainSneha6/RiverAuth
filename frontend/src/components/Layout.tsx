@@ -19,6 +19,7 @@ const Layout: React.FC<Props> = ({ background, children, contentRef }) => {
   return (
     <IonPage className="h-full">
       <IonContent
+        id="main-content"
         fullscreen
         ref={contentRef as any} // Type assertion to bypass HTMLIonContentElement mismatch
         style={{ '--background': 'transparent' } as React.CSSProperties}

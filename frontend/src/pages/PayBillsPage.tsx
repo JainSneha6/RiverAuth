@@ -1,38 +1,88 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking';
+import {
+  CreditCard,
+  Zap,
+  Tv,
+  Wifi,
+  Smartphone,
+  ShieldCheck,
+  Flame,
+  Droplet,
+} from 'lucide-react';
 
-interface ActionItem {
+type QuickActionItem = {
   label: string;
-  icon?: string; 
-}
+  amount: string;
+  detailLabel: string;
+  detailValue: string;
+  icon?: string;
+};
 
-const quickActions: ActionItem[] = [
-  { label: 'Pay A', icon: '/icons/icon-a.png' },
-  { label: 'Pay B', icon: '/icons/icon-b.png' },
-  { label: 'Pay C', icon: '/icons/icon-c.png' },
-  { label: 'Pay D', icon: '/icons/icon-d.png' },
-  { label: 'Pay E', icon: '/icons/icon-e.png' },
-  { label: 'Pay F', icon: '/icons/icon-f.png' },
+const quickActions: QuickActionItem[] = [
+  {
+    label: 'Tata Sky',
+    amount: '₹350',
+    detailLabel: 'Subscriber ID:',
+    detailValue: '1023456789',
+    icon: '/icons/tata-sky.png',
+  },
+  {
+    label: 'Airtel Mobile',
+    amount: '₹199',
+    detailLabel: 'Phone No:',
+    detailValue: '9876543210',
+    icon: '/icons/airtel.png',
+  },
+  {
+    label: 'BSNL Landline',
+    amount: '₹450',
+    detailLabel: 'Phone No:',
+    detailValue: '044-23456789',
+    icon: '/icons/bsnl.png',
+  },
+  {
+    label: 'BESCOM Electricity',
+    amount: '₹1200',
+    detailLabel: 'Account No:',
+    detailValue: '450002312',
+    icon: '/icons/electricity.png',
+  },
+  {
+    label: 'ACT Fibernet',
+    amount: '₹999',
+    detailLabel: 'Customer ID:',
+    detailValue: 'ACT123456',
+    icon: '/icons/act.png',
+  },
+  {
+    label: 'DTH Videocon',
+    amount: '₹300',
+    detailLabel: 'Subscriber ID:',
+    detailValue: 'VID987654',
+    icon: '/icons/videocon.png',
+  },
 ];
 
-const savedPayees: ActionItem[] = [
-  { label: 'Suraj', icon: '/icons/profile-a.png' },
-  { label: 'Anita', icon: '/icons/profile-b.png' },
-  { label: 'Ravi',  icon: '/icons/profile-c.png' },
-  { label: 'Priya', icon: '/icons/profile-d.png' },
-  { label: 'Vikas', icon: '/icons/profile-e.png' },
+
+const savedPayees = [
+  { label: 'Reliance Jio', icon: '/Jiopng.png' },
+  { label: 'Tata Power', icon: '/tata.png' },
+  { label: 'HDFC Bank', icon: '/hdfc.png' },
+  { label: 'Amazon Pay', icon: '/amazon_pay.png' },
+  { label: 'Paytm Insurance', icon: '/paytm.webp' },
 ];
 
-const addPayeeOptions: ActionItem[] = [
-  { label: 'Cards',            icon: '/icons/cards.png' },
-  { label: 'Electricity',      icon: '/icons/electricity.png' },
-  { label: 'TV/DTH',           icon: '/icons/tv.png' },
-  { label: 'WiFi',             icon: '/icons/wifi.png' },
-  { label: 'Mobile Recharge',  icon: '/icons/mobile.png' },
-  { label: 'Insurance',        icon: '/icons/insurance.png' },
-  { label: 'Gas',              icon: '/icons/gas.png' },
-  { label: 'Water',            icon: '/icons/water.png' },
+const addPayeeOptions = [
+  { label: 'Cards', icon: CreditCard },
+  { label: 'Electricity', icon: Zap },
+  { label: 'TV/DTH', icon: Tv },
+  { label: 'WiFi', icon: Wifi },
+  { label: 'Mobile Recharge', icon: Smartphone },
+  { label: 'Insurance', icon: ShieldCheck },
+  { label: 'Gas', icon: Flame },
+  { label: 'Water', icon: Droplet },
 ];
 
 interface IonContentElement extends HTMLElement {
@@ -40,44 +90,64 @@ interface IonContentElement extends HTMLElement {
   scrollToBottom(duration?: number): Promise<void>;
 }
 
+type Props = {
+  recipient: string,
+  amount: string,
+  detail: string
+}
+
+function QuickPayCard({ recipient, amount, detail }: Props) {
+  return (
+    <div
+
+      className="flex-shrink-0 bg-white h-48 w-48 rounded-lg border border-gray-300
+                flex flex-col  justify-between text-left p-4 shadow-md"
+    >
+      <span className="text-sm font-semibold text-gray-800">{recipient}</span>
+      <span className="text-4xl font-bold text-green-600">{amount}</span>
+      <span className="text-xs text-gray-600">{detail}</span>
+    </div>
+  )
+}
+
 const PayBillsPage: React.FC = () => {
 
   const contentRef = useRef<IonContentElement | null>(null);
-  
-  const [send, setSend] = useState<(payload: unknown) => void>(() => () => {});
+
+  const [send, setSend] = useState<(payload: unknown) => void>(() => () => { });
 
   useEffect(() => {
-      const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
-  
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        setSend(() => (payload: unknown) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(payload));
-          }
-        });
-      };
-  
-      ws.onmessage = (event) => {
-        console.log('Received:', event.data);
-      };
-  
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-  
-      ws.onclose = () => {
-        console.log('WebSocket closed');
-      };
-  
-      return () => {
-        ws.close();
-      };
-    }, []); 
+    const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
 
-    const { taps } = useGestureTracking(contentRef, send);
-    console.log(taps);
-  
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setSend(() => (payload: unknown) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(payload));
+        }
+      });
+    };
+
+    ws.onmessage = (event) => {
+      console.log('Received:', event.data);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket closed');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  const { taps } = useGestureTracking(contentRef, send);
+  console.log(taps);
+
   return (
     <Layout background="bg-white" contentRef={contentRef}>
       <div className="mt-5 w-full text-2xl font-bold text-black">Pay Bills</div>
@@ -86,19 +156,16 @@ const PayBillsPage: React.FC = () => {
         <div className="text-black text-lg font-medium mb-2">Quick Pay</div>
         <div className="w-full overflow-x-auto">
           <div className="flex space-x-4 w-max">
-            {quickActions.map(({ label, icon }, idx) => (
-              <div
+            {quickActions.map((item, idx) => (
+              <QuickPayCard
                 key={idx}
-                className="flex-shrink-0 bg-white h-48 w-48 rounded-lg border border-gray-300
-                           flex flex-col items-center justify-center text-center shadow-md"
-              >
-                {icon && (
-                  <img src={icon} alt={label} className="h-10 w-10 mb-2" />
-                )}
-                <span className="text-xs font-medium text-gray-700">{label}</span>
-              </div>
+                recipient={item.label}
+                amount={item.amount}
+                detail={`${item.detailLabel} ${item.detailValue}`}
+              />
             ))}
           </div>
+
         </div>
       </div>
 
@@ -126,18 +193,17 @@ const PayBillsPage: React.FC = () => {
       <div className="mt-8 w-full">
         <div className="text-black text-lg font-medium mb-2">Add Payee</div>
         <div className="grid grid-cols-4 gap-4">
-          {addPayeeOptions.map(({ label, icon }, idx) => (
+          {addPayeeOptions.map(({ label, icon: Icon }, idx) => (
             <div
               key={idx}
-              className="aspect-square rounded-lg bg-white border border-gray-300
-                         flex flex-col items-center justify-center text-center shadow-sm"
+              className="flex-shrink-0 bg-white h-32 w-32 rounded-lg border border-gray-300
+               flex flex-col items-center justify-center p-2 shadow-md text-center"
             >
-              {icon && (
-                <img src={icon} alt={label} className="h-6 w-6 mb-2" />
-              )}
-              <span className="text-xs font-medium text-gray-700 px-1">{label}</span>
+              <Icon className="h-8 w-8 text-blue-600 mb-2" />
+              <span className="text-xs font-medium text-gray-700">{label}</span>
             </div>
           ))}
+
         </div>
       </div>
     </Layout>

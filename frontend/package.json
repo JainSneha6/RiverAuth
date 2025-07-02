@@ -31,6 +31,7 @@
     "capacitor-freerasp": "^2.1.0",
     "cordova-plugin-iroot": "^3.1.0",
     "ionicons": "^7.4.0",
+    "lucide-react": "^0.525.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-router": "^5.3.4",
