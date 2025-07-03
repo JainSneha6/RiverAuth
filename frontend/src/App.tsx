@@ -11,7 +11,6 @@ import {
   IonIcon
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import Signup from './pages/Signup'; // make sure this path is correct
 import { menu, home, person, card, swapHorizontal } from 'ionicons/icons';
 
 /* Core CSS required for Ionic components to work properly */
