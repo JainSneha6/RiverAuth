@@ -1,10 +1,12 @@
 import { useRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { useGestureTracking } from '../hooks/useGestureTracking'; 
+import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
+import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
+import { IonInput } from '@ionic/react';
 
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
@@ -14,12 +16,11 @@ interface IonContentElement extends HTMLElement {
 const DashboardPage: React.FC = () => {
   const contentRef = useRef<IonContentElement>(null);
   const history = useHistory();
-
-  const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
-
+  const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
   const { taps } = useGestureTracking(contentRef, send);
   const { deviceInfo } = useDeviceTracking(send, isConnected);
   const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
+  const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
 
   const handleButtonClick = (buttonName: string) => {
     const buttonData = {
@@ -27,10 +28,15 @@ const DashboardPage: React.FC = () => {
       timestamp: Date.now(),
       button: buttonName,
       page: 'DashboardPage',
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
     };
     send(buttonData);
     console.log(`Button clicked: ${buttonName}`, buttonData);
+  };
+
+  const handleSearchInput = (e: CustomEvent) => {
+    const value = (e.detail.value as string) || '';
+    onInputChange('search')(e as CustomEvent<{ value: string }>);
   };
 
   const recentActions = [
@@ -83,7 +89,6 @@ const DashboardPage: React.FC = () => {
 
   return (
     <Layout contentRef={contentRef}>
-
       <div className="w-full text-left flex flex-col text-black mt-5">
         <div className="font-bold text-xl">Welcome, Suraj!</div>
         <div className="text-sm mt-5">Your Balance</div>
@@ -91,46 +96,64 @@ const DashboardPage: React.FC = () => {
       </div>
 
       <div className="mt-5">
+        <IonInput
+          placeholder="Search...."
+          onIonInput={handleSearchInput}
+          className="bg-white rounded-md shadow-md p-2"
+          style={{ color:'black' }}
+        />
+      </div>
+
+      <div className="mt-5">
         <div className="text-black">Quick Actions</div>
         <div className="mt-2 w-full grid grid-cols-3 grid-rows-2 gap-2">
-          <button 
+          <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
             onClick={() => handleButtonClick('Documents')}
           >
             <img src="/sheets of documents.png" alt="Documents" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Documents</span>
           </button>
-          <button 
+          <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
             onClick={() => handleButtonClick('Cards')}
           >
             <img src="/credit cards.png" alt="Cards" className="h-24 w-auto mb-2" />
             <span className="text-sm font-medium text-gray-800">Cards</span>
           </button>
-          <button 
+          <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => { handleButtonClick('Pay Bills'); history.push('/pay-bills'); }}
+            onClick={() => {
+              handleButtonClick('Pay Bills');
+              history.push('/pay-bills');
+            }}
           >
             <img src="/bills.png" alt="Pay Bills" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Pay Bills</span>
           </button>
-          <button 
+          <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => { handleButtonClick('Contact Us'); history.push('/profile'); }}
+            onClick={() => {
+              handleButtonClick('Contact Us');
+              history.push('/profile');
+            }}
           >
             <img src="/contact.png" alt="Contact" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Contact Us</span>
           </button>
-          <button 
+          <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
             onClick={() => handleButtonClick('Security Questions')}
           >
             <img src="/security configuration.png" alt="Security" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Security Questions</span>
           </button>
-          <button 
+          <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => { handleButtonClick('Transfer Funds'); history.push('/transfer-funds'); }}
+            onClick={() => {
+              handleButtonClick('Transfer Funds');
+              history.push('/transfer-funds');
+            }}
           >
             <img src="/money and phone.png" alt="Transfer" className="h-24 w-24 mb-2" />
             <span className="text-sm font-medium text-gray-800">Transfer Funds</span>
@@ -138,8 +161,8 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      <div className='mt-5 w-full'>
-        <div className='text-black w-full font-semibold text-lg mb-2'>Recent Actions</div>
+      <div className="mt-5 w-full">
+        <div className="text-black w-full font-semibold text-lg mb-2">Recent Actions</div>
         <div className="flex flex-col gap-3">
           {recentActions.map((action, idx) => (
             <div
@@ -155,7 +178,9 @@ const DashboardPage: React.FC = () => {
                     <div className={`font-bold text-lg ml-2 ${action.color}`}>{action.amount}</div>
                   )}
                   {action.status && (
-                    <div className={`font-semibold ml-2 px-2 py-1 rounded ${action.color} bg-blue-50 text-xs`}>{action.status}</div>
+                    <div className={`font-semibold ml-2 px-2 py-1 rounded ${action.color} bg-blue-50 text-xs`}>
+                      {action.status}
+                    </div>
                   )}
                 </div>
                 <div className="text-gray-500 text-sm truncate">{action.subtitle}</div>

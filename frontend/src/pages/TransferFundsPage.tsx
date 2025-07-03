@@ -4,6 +4,7 @@ import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
+import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
 
 type Props = {};
 
@@ -56,11 +57,12 @@ const TransferFundsPage: React.FC<Props> = () => {
         )
       : recipients.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const contentRef = useRef<IonContentElement>(null);
-    const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
-    const { taps } = useGestureTracking(contentRef, send);
-    const { deviceInfo } = useDeviceTracking(send, isConnected);
-    const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
+  const contentRef = useRef<IonContentElement>(null);
+  const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
+  const { taps } = useGestureTracking(contentRef, send);
+  const { deviceInfo } = useDeviceTracking(send, isConnected);
+  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
+  const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
 
   return (
     <Layout contentRef={contentRef}>
@@ -99,8 +101,15 @@ const TransferFundsPage: React.FC<Props> = () => {
           placeholder={`Search ${selectedTab.toLowerCase()}…`}
           className="w-full rounded-md border border-gray-700 px-4 py-2 text-sm focus:ring-2 focus:ring-gray-800"
           value={searchTerm}
-          style={{ color:'black' }}
-          onChange={e => setSearchTerm(e.target.value)}
+          style={{ color: 'black' }}
+          onChange={e => {
+            setSearchTerm(e.target.value);
+            // Create a CustomEvent-like object to match onInputChange expectation
+            const customEvent = {
+              detail: { value: e.target.value },
+            } as CustomEvent<{ value: string }>;
+            onInputChange('search')(customEvent);
+          }}
         />
       </div>
 
