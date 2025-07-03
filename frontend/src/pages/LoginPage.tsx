@@ -11,6 +11,8 @@ import { personAdd, lockClosed } from 'ionicons/icons';
 import { useState, useRef, useEffect } from 'react';
 import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useDeviceTracking } from '../hooks/useDeviceTracking';
+import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
@@ -28,10 +30,12 @@ const LoginPage: React.FC = () => {
   const passwordsMatch = password === confirm;
   const allFilled = name && email && password && confirm;
 
-  const contentRef = useRef<IonContentElement | null>(null);
-
-  // Use the global WebSocket hook
+  const contentRef = useRef<IonContentElement>(null);
   const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
+
+  const { taps } = useGestureTracking(contentRef, send);
+  const { deviceInfo } = useDeviceTracking(send, isConnected);
+  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
 
   const handleSignup = () => {
     if (!allFilled) {
@@ -45,7 +49,6 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    // Send form submission data to WebSocket
     const formData = {
       type: 'form_submission',
       timestamp: Date.now(),
@@ -60,7 +63,6 @@ const LoginPage: React.FC = () => {
     setShowToast(true);
   };
 
-  // Send field interaction data
   const handleFieldChange = (fieldName: string, value: string) => {
     const fieldData = {
       type: 'field_interaction',
@@ -72,63 +74,6 @@ const LoginPage: React.FC = () => {
     send(fieldData);
   };
 
-  const { taps } = useGestureTracking(contentRef, send);
-  
-  // Send tap data to WebSocket whenever taps change
-  useEffect(() => {
-    if (taps.length > 0 && send) {
-      // Send raw tap data directly without modification
-      send(taps);
-      console.log('Sent raw tap data to WebSocket:', taps);
-    }
-  }, [taps, send]);
-  
-  console.log('Current taps:', taps);
-
-  // Example: Send page load event when component mounts
-  useEffect(() => {
-    if (isConnected) {
-      const pageLoadData = {
-        type: 'page_load',
-        timestamp: Date.now(),
-        page: 'LoginPage',
-        userAgent: navigator.userAgent,
-        viewport: {
-          width: window.innerWidth,
-          height: window.innerHeight
-        }
-      };
-      send(pageLoadData);
-    }
-  }, [isConnected, send]);
-
-  // Example: Send mouse movement data (throttled)
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        if (isConnected) {
-          const mouseData = {
-            type: 'mouse_move',
-            timestamp: Date.now(),
-            x: e.clientX,
-            y: e.clientY,
-            target: (e.target as HTMLElement)?.tagName || 'unknown'
-          };
-          send(mouseData);
-        }
-      }, 100); // Throttle to every 100ms
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(timeout);
-    };
-  }, [isConnected, send]);
-
   return (
     <IonPage className="h-full">
       <IonContent fullscreen ref={contentRef as any}>
@@ -136,13 +81,6 @@ const LoginPage: React.FC = () => {
         <div className="flex flex-col items-center bg-white">
         <img src="/LoginHeader.png" alt="Logo" className="w-full" />
         <div className="w-full max-w-md px-6 py-8">
-          {/* Connection Status */}
-          <div className={`mb-4 p-2 rounded text-center text-sm ${
-            isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
-            WebSocket: {isConnected ? '✅ Connected' : '❌ Disconnected'}
-            {error && <div className="text-red-600">Error: {error}</div>}
-          </div>
           
           <div className='w-full text-center text-black font-bold text-3xl mb-10'>Banking that Knows It's <div className='text-blue-500'>You</div></div>
           <div className="mb-4">

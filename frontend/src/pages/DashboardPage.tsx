@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking'; 
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
@@ -14,14 +15,12 @@ const DashboardPage: React.FC = () => {
   const contentRef = useRef<IonContentElement>(null);
   const history = useHistory();
 
-  // Use the global WebSocket hook
   const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
 
   const { taps } = useGestureTracking(contentRef, send);
-  const { deviceInfo } = useDeviceTracking(send);
-  console.log(deviceInfo);
+  const { deviceInfo } = useDeviceTracking(send, isConnected);
+  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
 
-  // Function to handle button clicks and send data to WebSocket
   const handleButtonClick = (buttonName: string) => {
     const buttonData = {
       type: 'button_click',
@@ -34,7 +33,6 @@ const DashboardPage: React.FC = () => {
     console.log(`Button clicked: ${buttonName}`, buttonData);
   };
 
-  // Dummy recent actions data
   const recentActions = [
     {
       type: 'transaction',
@@ -85,13 +83,6 @@ const DashboardPage: React.FC = () => {
 
   return (
     <Layout contentRef={contentRef}>
-      {/* Connection Status */}
-      <div className={`mb-4 p-2 rounded text-center text-sm ${
-        isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-      }`}>
-        WebSocket: {isConnected ? '✅ Connected' : '❌ Disconnected'}
-        {error && <div className="text-red-600">Error: {error}</div>}
-      </div>
 
       <div className="w-full text-left flex flex-col text-black mt-5">
         <div className="font-bold text-xl">Welcome, Suraj!</div>

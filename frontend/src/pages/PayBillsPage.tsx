@@ -11,6 +11,9 @@ import {
   Flame,
   Droplet,
 } from 'lucide-react';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { useDeviceTracking } from '../hooks/useDeviceTracking';
+import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 
 type QuickActionItem = {
   label: string;
@@ -112,44 +115,15 @@ function QuickPayCard({ recipient, amount, detail }: Props) {
 
 const PayBillsPage: React.FC = () => {
 
-  const contentRef = useRef<IonContentElement | null>(null);
+  const contentRef = useRef<IonContentElement>(null);
 
-  const [send, setSend] = useState<(payload: unknown) => void>(() => () => { });
-
-  useEffect(() => {
-    const ws = new WebSocket('ws://your-websocket-url'); // Replace with actual WebSocket URL
-
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      setSend(() => (payload: unknown) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(payload));
-        }
-      });
-    };
-
-    ws.onmessage = (event) => {
-      console.log('Received:', event.data);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket closed');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []);
-
+  const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
   const { taps } = useGestureTracking(contentRef, send);
-  console.log(taps);
+  const { deviceInfo } = useDeviceTracking(send, isConnected);
+  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
 
   return (
-    <Layout background="bg-white" contentRef={contentRef}>
+    <Layout contentRef={contentRef}>
       <div className="mt-5 w-full text-2xl font-bold text-black">Pay Bills</div>
 
       <div className="mt-5 w-full">

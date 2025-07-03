@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { IonPage, IonContent } from '@ionic/react';
+import React, { useRef, useState } from 'react';
+import Layout from '../components/Layout';
+import { useGestureTracking } from '../hooks/useGestureTracking';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { useDeviceTracking } from '../hooks/useDeviceTracking';
+import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 
 const states = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
@@ -8,6 +12,11 @@ const states = [
   'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu and Kashmir',
   'Ladakh', 'Puducherry',
 ];
+
+interface IonContentElement extends HTMLElement {
+  getScrollElement(): Promise<HTMLElement>;
+  scrollToBottom(duration?: number): Promise<void>;
+}
 
 const Signup3: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -25,9 +34,14 @@ const Signup3: React.FC = () => {
     setFormData({ ...formData, [field]: value });
   };
 
+  const contentRef = useRef<IonContentElement>(null);
+  const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
+  const { taps } = useGestureTracking(contentRef, send);
+  const { deviceInfo } = useDeviceTracking(send, isConnected);
+  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
+
   return (
-    <IonPage>
-      <IonContent>
+    <Layout background='bg-white' contentRef={contentRef}>
         <div className="min-h-screen w-full bg-white p-5 flex flex-col">
           <div className="text-black text-3xl font-bold mb-4">Sign Up</div>
           {/* Progress Bar */}
@@ -176,8 +190,7 @@ const Signup3: React.FC = () => {
             </div>
           </div>
         </div>
-      </IonContent>
-    </IonPage>
+      </Layout>
   );
 };
 

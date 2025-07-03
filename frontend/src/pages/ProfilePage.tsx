@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Layout from '../components/Layout';
+import { useGestureTracking } from '../hooks/useGestureTracking';
+import { useWebSocket } from '../hooks/useWebSocket';
+import { useDeviceTracking } from '../hooks/useDeviceTracking';
+import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 
 const mockUser = {
   name: 'John Doe',
@@ -26,6 +30,11 @@ const mockUser = {
   ],
 };
 
+interface IonContentElement extends HTMLElement {
+  getScrollElement(): Promise<HTMLElement>;
+  scrollToBottom(duration?: number): Promise<void>;
+}
+
 function getYearsAsCustomer(joinDate: string) {
   const join = new Date(joinDate);
   const now = new Date();
@@ -41,8 +50,14 @@ function getYearsAsCustomer(joinDate: string) {
 
 const ProfilePage: React.FC = () => {
   const years = getYearsAsCustomer(mockUser.joinDate);
+  const contentRef = useRef<IonContentElement>(null);
+  const { send, isConnected, error } = useWebSocket('ws://localhost:8081'); 
+  const { taps } = useGestureTracking(contentRef, send);
+  const { deviceInfo } = useDeviceTracking(send, isConnected);
+  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
+
   return (
-    <Layout>
+    <Layout contentRef={contentRef}>
       <div className="w-full max-w-xl mx-auto flex flex-col gap-8 mt-6">
         <div className="flex flex-col items-center gap-2">
           <div className="h-20 w-20 bg-yellow-300 rounded-full flex items-center justify-center text-3xl font-bold">

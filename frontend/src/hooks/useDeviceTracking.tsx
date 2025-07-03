@@ -11,12 +11,13 @@ interface DeviceInfo {
   emulatorDetectionCount: number;
 }
 
-export const useDeviceTracking = (send: (payload: unknown) => void) => {
+export const useDeviceTracking = (send: (payload: unknown) => void, isConnected: boolean) => {
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
 
   useEffect(() => {
     const trackDevice = async () => {
       try {
+        // Get device ID and track changes
         const deviceIdInfo = await Device.getId();
         const currentDeviceId = deviceIdInfo.identifier;
         const storedDeviceId = await Preferences.get({ key: 'deviceId' });
@@ -34,6 +35,7 @@ export const useDeviceTracking = (send: (payload: unknown) => void) => {
           await Preferences.set({ key: 'deviceChangeCount', value: '0' });
         }
 
+        // Get OS version and track changes
         const deviceInfo = await Device.getInfo();
         const currentOsVersion = `${deviceInfo.operatingSystem} ${deviceInfo.osVersion}`;
         const storedOsVersion = await Preferences.get({ key: 'osVersion' });
@@ -51,6 +53,7 @@ export const useDeviceTracking = (send: (payload: unknown) => void) => {
           await Preferences.set({ key: 'osChangeCount', value: '0' });
         }
 
+        // Track emulator status
         const isEmulator = deviceInfo.isVirtual;
         const storedEmulatorCount = await Preferences.get({ key: 'emulatorDetectionCount' });
         let emulatorDetectionCount = parseInt(storedEmulatorCount.value || '0');
@@ -70,20 +73,29 @@ export const useDeviceTracking = (send: (payload: unknown) => void) => {
 
         setDeviceInfo(deviceData);
 
-        const payload = {
-          type: 'device',
-          ts: Date.now(),
-          data: deviceData,
-        };
+        // Send device data to backend only if connection is established
+        if (isConnected) {
+          const payload = {
+            type: 'device',
+            ts: Date.now(),
+            data: deviceData,
+          };
 
-        send(payload);
+          try {
+            send(payload);
+          } catch (sendError) {
+            console.error('Error sending device data to backend:', sendError);
+          }
+        } else {
+          console.warn('WebSocket connection not established, skipping device data send.');
+        }
       } catch (error) {
         console.error('Error in device tracking:', error);
       }
     };
 
     trackDevice();
-  }, [send]);
+  }, [send, isConnected]);
 
   return { deviceInfo };
 };
