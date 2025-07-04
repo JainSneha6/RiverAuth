@@ -15,9 +15,11 @@ logger = logging.getLogger(__name__)
 
 connected_clients = set()
 event_queue = deque()
-feature_data = []  # List to store features for DataFrame
+tap_features = []  # Store tap features
+swipe_features = []  # Store swipe features
+typing_features = []  # Store typing features
 last_event_time = {}  # Track last event time per client
-event_counts = {}  # Track event counts per client for frequency
+event_counts = {}  # Track event counts per client
 session_stats = {}  # Track session-based stats
 user_stats = {}  # Track user-specific stats
 EDGE_THRESHOLD = 50  # Pixels from edge to consider "near edge"
@@ -25,6 +27,8 @@ FREQUENCY_WINDOW = 5  # Seconds for frequency calculation
 SCREEN_WIDTH = 1920  # Default, updated by device message
 SCREEN_HEIGHT = 1080  # Default, updated by device message
 FREQUENCY_THRESHOLD = 5  # Events per second for unusual frequency
+WPM_THRESHOLD_HIGH = 120  # WPM above which is considered unusual
+WPM_THRESHOLD_LOW = 10  # WPM below which is considered unusual
 
 def get_region(x, y, screen_width, screen_height):
     """Assign screen region based on coordinates."""
@@ -60,7 +64,7 @@ async def process_events():
             user_id = event_data.get('user_id', client_ip)  # Use client_ip if user_id not provided
 
             # Handle unexpected event types
-            if event_type not in ['tap', 'swipe', 'device']:
+            if event_type not in ['tap', 'swipe', 'device', 'typing']:
                 logger.warning(f"Unknown event type: {event_type}, skipping")
                 continue
 
@@ -73,17 +77,20 @@ async def process_events():
 
             # Initialize client and user tracking
             if client_ip not in last_event_time:
-                last_event_time[client_ip] = {'tap': 0, 'swipe': 0, 'any': 0}
-                event_counts[client_ip] = {'tap': [], 'swipe': []}
+                last_event_time[client_ip] = {'tap': 0, 'swipe': 0, 'typing': 0, 'any': 0}
+                event_counts[client_ip] = {'tap': [], 'swipe': [], 'typing': []}
                 session_stats[client_ip] = {
                     'tap_durations': [], 'swipe_speeds': [], 'swipe_distances': [],
-                    'event_times': [], 'regions': [], 'directions': [], 'event_sequence': []
+                    'typing_wpms': [], 'typing_durations': [], 'typing_lengths': [],
+                    'event_times': [], 'tap_times': [], 'swipe_times': [], 'typing_times': [],
+                    'regions': [], 'directions': [], 'event_sequence': [], 'targets': [], 'fields': []
                 }
             if user_id not in user_stats:
                 user_stats[user_id] = {
-                    'tap_durations': [], 'swipe_speeds': [], 'tap_x': [], 'tap_y': [],
-                    'swipe_start_x': [], 'swipe_start_y': [], 'regions': [], 'directions': [],
-                    'pointer_types': []
+                    'tap_durations': [], 'tap_x': [], 'tap_y': [],
+                    'swipe_speeds': [], 'swipe_distances': [], 'swipe_start_x': [], 'swipe_start_y': [],
+                    'typing_wpms': [], 'typing_durations': [], 'typing_lengths': [], 'fields': [],
+                    'regions': [], 'directions': [], 'pointer_types': []
                 }
 
             # Update event counts for frequency
@@ -94,30 +101,37 @@ async def process_events():
                 if current_time - t <= FREQUENCY_WINDOW
             ]
             session_stats[client_ip]['event_times'].append(event_ts)
+            session_stats[client_ip][f'{event_type}_times'].append(event_ts)
 
             # Base features
             features = {
-                'event_type': event_type,
                 'timestamp': event_ts,
                 'user_id': user_id,
                 'client_ip': client_ip,
-                'event_count': len(event_counts[client_ip]['tap']) + len(event_counts[client_ip]['swipe']),
-                'event_rate': (
-                    len(event_counts[client_ip]['tap'] + event_counts[client_ip]['swipe']) / FREQUENCY_WINDOW
+                'event_count': sum(len(event_counts[client_ip][et]) for et in ['tap', 'swipe', 'typing']),
+                f'{event_type}_event_rate': (
+                    len(event_counts[client_ip][event_type]) / FREQUENCY_WINDOW
                     if FREQUENCY_WINDOW > 0 else 0
                 ),
-                'is_unusual_frequency': (
-                    (len(event_counts[client_ip]['tap'] + event_counts[client_ip]['swipe']) / FREQUENCY_WINDOW) > FREQUENCY_THRESHOLD
+                f'is_unusual_{event_type}_frequency': (
+                    len(event_counts[client_ip][event_type]) / FREQUENCY_WINDOW > FREQUENCY_THRESHOLD
                 ),
-                'time_since_last_event': (
-                    event_ts - last_event_time[client_ip]['any']
-                    if last_event_time[client_ip]['any'] > 0 else 0
+                f'time_since_last_{event_type}': (
+                    event_ts - last_event_time[client_ip][event_type]
+                    if last_event_time[client_ip][event_type] > 0 else 0
                 ),
                 'session_duration': (
                     event_ts - min(session_stats[client_ip]['event_times'])
                     if session_stats[client_ip]['event_times'] else 0
                 ),
                 'time_of_day': int(time.strftime("%H", time.localtime(event_ts))),
+                f'inter_{event_type}_variability': (
+                    np.std(np.diff(session_stats[client_ip][f'{event_type}_times']))
+                    if len(session_stats[client_ip][f'{event_type}_times']) > 1 else 0
+                ),
+                'event_sequence_entropy': compute_entropy(
+                    [session_stats[client_ip]['event_sequence'].count(e) for e in ['tap', 'swipe', 'typing']]
+                ),
             }
 
             # User-specific statistics
@@ -125,21 +139,42 @@ async def process_events():
             std_user_tap_duration = np.std(user_stats[user_id]['tap_durations']) if user_stats[user_id]['tap_durations'] else 0
             avg_user_swipe_speed = np.mean(user_stats[user_id]['swipe_speeds']) if user_stats[user_id]['swipe_speeds'] else 0
             std_user_swipe_speed = np.std(user_stats[user_id]['swipe_speeds']) if user_stats[user_id]['swipe_speeds'] else 0
+            avg_user_swipe_distance = np.mean(user_stats[user_id]['swipe_distances']) if user_stats[user_id]['swipe_distances'] else 0
+            std_user_swipe_distance = np.std(user_stats[user_id]['swipe_distances']) if user_stats[user_id]['swipe_distances'] else 0
+            avg_user_typing_wpm = np.mean(user_stats[user_id]['typing_wpms']) if user_stats[user_id]['typing_wpms'] else 0
+            std_user_typing_wpm = np.std(user_stats[user_id]['typing_wpms']) if user_stats[user_id]['typing_wpms'] else 0
+            avg_user_typing_duration = np.mean(user_stats[user_id]['typing_durations']) if user_stats[user_id]['typing_durations'] else 0
+            std_user_typing_duration = np.std(user_stats[user_id]['typing_durations']) if user_stats[user_id]['typing_durations'] else 0
+            avg_user_typing_length = np.mean(user_stats[user_id]['typing_lengths']) if user_stats[user_id]['typing_lengths'] else 0
+            std_user_typing_length = np.std(user_stats[user_id]['typing_lengths']) if user_stats[user_id]['typing_lengths'] else 0
             region_counts = [user_stats[user_id]['regions'].count(r) for r in ['top-left', 'top-right', 'bottom-left', 'bottom-right']]
             preferred_region = ['top-left', 'top-right', 'bottom-left', 'bottom-right'][np.argmax(region_counts)] if sum(region_counts) > 0 else 'none'
-            region_entropy = compute_entropy(region_counts)
+            tap_region_entropy = compute_entropy([user_stats[user_id]['regions'].count(r) for r in ['top-left', 'top-right', 'bottom-left', 'bottom-right']])
             direction_counts = [user_stats[user_id]['directions'].count(d) for d in ['left', 'right', 'up', 'down', 'unknown']]
+            swipe_direction_entropy = compute_entropy(direction_counts)
             swipe_direction_consistency = max(direction_counts) / sum(direction_counts) if sum(direction_counts) > 0 else 0
-            event_sequence_entropy = compute_entropy([session_stats[client_ip]['event_sequence'].count(e) for e in ['tap', 'swipe']])
+            field_counts = [user_stats[user_id]['fields'].count(f) for f in set(user_stats[user_id]['fields'])] if user_stats[user_id]['fields'] else [0]
+            preferred_field = max(set(user_stats[user_id]['fields']), key=user_stats[user_id]['fields'].count, default='none') if user_stats[user_id]['fields'] else 'none'
+            field_entropy = compute_entropy(field_counts)
             features.update({
                 'avg_user_tap_duration': avg_user_tap_duration,
                 'std_user_tap_duration': std_user_tap_duration,
                 'avg_user_swipe_speed': avg_user_swipe_speed,
                 'std_user_swipe_speed': std_user_swipe_speed,
+                'avg_user_swipe_distance': avg_user_swipe_distance,
+                'std_user_swipe_distance': std_user_swipe_distance,
+                'avg_user_typing_wpm': avg_user_typing_wpm,
+                'std_user_typing_wpm': std_user_typing_wpm,
+                'avg_user_typing_duration': avg_user_typing_duration,
+                'std_user_typing_duration': std_user_typing_duration,
+                'avg_user_typing_length': avg_user_typing_length,
+                'std_user_typing_length': std_user_typing_length,
                 'preferred_region': preferred_region,
-                'region_entropy': region_entropy,
+                'tap_region_entropy': tap_region_entropy,
+                'swipe_direction_entropy': swipe_direction_entropy,
                 'swipe_direction_consistency': swipe_direction_consistency,
-                'event_sequence_entropy': event_sequence_entropy,
+                'preferred_field': preferred_field,
+                'field_entropy': field_entropy,
             })
 
             if event_type == 'tap':
@@ -155,7 +190,7 @@ async def process_events():
                 target = event_data.get('target', 'unknown')
                 source = event_data.get('source', 'unknown')
 
-                # Compute additional tap features
+                # Compute tap-specific features
                 distance_from_center = math.sqrt(
                     (tap_x - SCREEN_WIDTH / 2) ** 2 + (tap_y - SCREEN_HEIGHT / 2) ** 2
                 )
@@ -167,10 +202,6 @@ async def process_events():
                     tap_y < EDGE_THRESHOLD or tap_y > SCREEN_HEIGHT - EDGE_THRESHOLD
                 )
                 is_gesture = source == 'gesture'
-                time_since_last_tap = (
-                    event_ts - last_event_time[client_ip]['tap']
-                    if last_event_time[client_ip]['tap'] > 0 else 0
-                )
                 tap_pressure = min(duration / 1000, 1.0)
                 avg_tap_x = np.mean(user_stats[user_id]['tap_x']) if user_stats[user_id]['tap_x'] else tap_x
                 avg_tap_y = np.mean(user_stats[user_id]['tap_y']) if user_stats[user_id]['tap_y'] else tap_y
@@ -180,10 +211,11 @@ async def process_events():
                     [user_stats[user_id]['pointer_types'].count(p) for p in ['mouse', 'touch', 'gesture', 'unknown']],
                     default='unknown'
                 )
+                session_stats[client_ip]['targets'].append(target)
                 target_change_frequency = (
-                    sum(1 for i in range(1, len(session_stats[client_ip]['event_times']))
-                        if session_stats[client_ip]['event_times'][i] != session_stats[client_ip]['event_times'][i-1])
-                    / len(session_stats[client_ip]['event_times']) if session_stats[client_ip]['event_times'] else 0
+                    sum(1 for i in range(1, len(session_stats[client_ip]['targets']))
+                        if session_stats[client_ip]['targets'][i] != session_stats[client_ip]['targets'][i-1])
+                    / len(session_stats[client_ip]['targets']) if len(session_stats[client_ip]['targets']) > 1 else 0
                 )
 
                 # Update session and user stats
@@ -213,7 +245,6 @@ async def process_events():
                     'normalized_x': normalized_x,
                     'normalized_y': normalized_y,
                     'is_near_edge': is_near_edge,
-                    'time_since_last_tap': time_since_last_tap,
                     'tap_pressure': tap_pressure,
                     'distance_from_user_mean': distance_from_user_mean,
                     'tap_pressure_deviation': tap_pressure_deviation,
@@ -221,9 +252,16 @@ async def process_events():
                     'target_change_frequency': target_change_frequency,
                 })
 
-                # Log for debugging
+                # Store tap features
+                tap_features.append(features)
                 logger.info(f"Tap at ({tap_x}, {tap_y}), region: {region}, "
                             f"SCREEN_WIDTH: {SCREEN_WIDTH}, distance_from_center: {distance_from_center:.2f}")
+
+                # Save tap features to CSV
+                tap_df = pd.DataFrame(tap_features)
+                tap_csv_path = os.path.abspath('tap_features_data.csv')
+                tap_df.to_csv(tap_csv_path, index=False)
+                logger.info(f"Saved {len(tap_features)} tap features to {tap_csv_path}")
 
             elif event_type == 'swipe':
                 # Extract swipe features
@@ -237,9 +275,10 @@ async def process_events():
                 duration = event_data.get('duration', 0)
                 direction = event_data.get('direction', 'unknown')
                 pointer_type = event_data.get('pointerType', 'unknown')
+                target = event_data.get('target', 'unknown')
                 source = event_data.get('source', 'unknown')
 
-                # Compute additional swipe features
+                # Compute swipe-specific features
                 speed = distance / duration if duration > 0 else 0
                 angle = math.degrees(math.atan2(delta_y, delta_x))
                 start_region = get_region(start_x, start_y, SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -257,11 +296,6 @@ async def process_events():
                 )
                 is_diagonal = 30 <= abs(angle % 180) <= 60 or 120 <= abs(angle % 180) <= 150
                 is_gesture = source == 'gesture'
-                time_since_last_swipe = (
-                    event_ts - last_event_time[client_ip]['swipe']
-                    if last_event_time[client_ip]['swipe'] > 0 else 0
-                )
-                acceleration = speed / duration if duration > 0 else 0
                 avg_start_x = np.mean(user_stats[user_id]['swipe_start_x']) if user_stats[user_id]['swipe_start_x'] else start_x
                 avg_start_y = np.mean(user_stats[user_id]['swipe_start_y']) if user_stats[user_id]['swipe_start_y'] else start_y
                 distance_from_user_mean = math.sqrt((start_x - avg_start_x) ** 2 + (start_y - avg_start_y) ** 2)
@@ -269,10 +303,11 @@ async def process_events():
                     [user_stats[user_id]['pointer_types'].count(p) for p in ['mouse', 'touch', 'gesture', 'unknown']],
                     default='unknown'
                 )
+                session_stats[client_ip]['targets'].append(target)
                 target_change_frequency = (
-                    sum(1 for i in range(1, len(session_stats[client_ip]['event_times']))
-                        if session_stats[client_ip]['event_times'][i] != session_stats[client_ip]['event_times'][i-1])
-                    / len(session_stats[client_ip]['event_times']) if session_stats[client_ip]['event_times'] else 0
+                    sum(1 for i in range(1, len(session_stats[client_ip]['targets']))
+                        if session_stats[client_ip]['targets'][i] != session_stats[client_ip]['targets'][i-1])
+                    / len(session_stats[client_ip]['targets']) if len(session_stats[client_ip]['targets']) > 1 else 0
                 )
 
                 # Update session and user stats
@@ -282,6 +317,7 @@ async def process_events():
                 session_stats[client_ip]['directions'].append(direction)
                 session_stats[client_ip]['event_sequence'].append('swipe')
                 user_stats[user_id]['swipe_speeds'].append(speed)
+                user_stats[user_id]['swipe_distances'].append(distance)
                 user_stats[user_id]['swipe_start_x'].append(start_x)
                 user_stats[user_id]['swipe_start_y'].append(start_y)
                 user_stats[user_id]['regions'].append(start_region)
@@ -312,27 +348,81 @@ async def process_events():
                     'is_diagonal': is_diagonal,
                     'is_gesture': is_gesture,
                     'pointer_type': pointer_type,
-                    'time_since_last_swipe': time_since_last_swipe,
-                    'acceleration': acceleration,
+                    'target': target,
+                    'acceleration': speed / duration if duration > 0 else 0,
                     'distance_from_user_mean': distance_from_user_mean,
                     'is_new_pointer_type': is_new_pointer_type,
                     'target_change_frequency': target_change_frequency,
                 })
 
-                # Log for debugging
+                # Store swipe features
+                swipe_features.append(features)
                 logger.info(f"Swipe from ({start_x}, {start_y}) to ({end_x}, {end_y}), "
                             f"start_region: {start_region}, end_region: {end_region}")
 
-            # Store features
-            feature_data.append(features)
+                # Save swipe features to CSV
+                swipe_df = pd.DataFrame(swipe_features)
+                swipe_csv_path = os.path.abspath('swipe_features_data.csv')
+                swipe_df.to_csv(swipe_csv_path, index=False)
+                logger.info(f"Saved {len(swipe_features)} swipe features to {swipe_csv_path}")
+
+            elif event_type == 'typing':
+                # Extract typing features
+                field = event_data.get('field', 'unknown')
+                length = event_data.get('length', 0)
+                duration = event_data.get('duration', 0)
+                wpm = event_data.get('wpm', 0)
+
+                # Compute typing-specific features
+                characters_per_second = length / (duration / 1000) if duration > 0 else 0
+                is_unusual_wpm = wpm > WPM_THRESHOLD_HIGH or wpm < WPM_THRESHOLD_LOW
+                session_stats[client_ip]['fields'].append(field)
+                field_switch_frequency = (
+                    sum(1 for i in range(1, len(session_stats[client_ip]['fields']))
+                        if session_stats[client_ip]['fields'][i] != session_stats[client_ip]['fields'][i-1])
+                    / len(session_stats[client_ip]['fields']) if len(session_stats[client_ip]['fields']) > 1 else 0
+                )
+                wpm_deviation = abs(wpm - avg_user_typing_wpm) if user_stats[user_id]['typing_wpms'] else 0
+                duration_deviation = abs(duration - avg_user_typing_duration) if user_stats[user_id]['typing_durations'] else 0
+                length_deviation = abs(length - avg_user_typing_length) if user_stats[user_id]['typing_lengths'] else 0
+
+                # Update session and user stats
+                session_stats[client_ip]['typing_wpms'].append(wpm)
+                session_stats[client_ip]['typing_durations'].append(duration)
+                session_stats[client_ip]['typing_lengths'].append(length)
+                session_stats[client_ip]['event_sequence'].append('typing')
+                user_stats[user_id]['typing_wpms'].append(wpm)
+                user_stats[user_id]['typing_durations'].append(duration)
+                user_stats[user_id]['typing_lengths'].append(length)
+                user_stats[user_id]['fields'].append(field)
+
+                # Add typing-specific features
+                features.update({
+                    'field': field,
+                    'length': length,
+                    'duration': duration,
+                    'wpm': wpm,
+                    'characters_per_second': characters_per_second,
+                    'is_unusual_wpm': is_unusual_wpm,
+                    'field_switch_frequency': field_switch_frequency,
+                    'wpm_deviation': wpm_deviation,
+                    'duration_deviation': duration_deviation,
+                    'length_deviation': length_deviation,
+                })
+
+                # Store typing features
+                typing_features.append(features)
+                logger.info(f"Typing in field '{field}', length: {length}, wpm: {wpm}, duration: {duration}ms")
+
+                # Save typing features to CSV
+                typing_df = pd.DataFrame(typing_features)
+                typing_csv_path = os.path.abspath('typing_features_data.csv')
+                typing_df.to_csv(typing_csv_path, index=False)
+                logger.info(f"Saved {len(typing_features)} typing features to {typing_csv_path}")
+
+            # Update event time
             last_event_time[client_ip][event_type] = event_ts
             last_event_time[client_ip]['any'] = event_ts
-
-            # Save to CSV after every event (for testing)
-            df = pd.DataFrame(feature_data)
-            csv_path = os.path.abspath('gesture_features.csv')
-            df.to_csv(csv_path, index=False)
-            logger.info(f"Saved {len(feature_data)} features to {csv_path}")
 
         else:
             await asyncio.sleep(0.1)
@@ -384,10 +474,20 @@ if __name__ == '__main__':
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info('Server stopped by user')
-        if feature_data:
-            df = pd.DataFrame(feature_data)
-            csv_path = os.path.abspath('gesture_features.csv')
-            df.to_csv(csv_path, index=False)
-            logger.info(f"Saved {len(feature_data)} features to {csv_path}")
+        if tap_features:
+            tap_df = pd.DataFrame(tap_features)
+            tap_csv_path = os.path.abspath('tap_features_data.csv')
+            tap_df.to_csv(tap_csv_path, index=False)
+            logger.info(f"Saved {len(tap_features)} tap features to {tap_csv_path}")
+        if swipe_features:
+            swipe_df = pd.DataFrame(swipe_features)
+            swipe_csv_path = os.path.abspath('swipe_features_data.csv')
+            swipe_df.to_csv(swipe_csv_path, index=False)
+            logger.info(f"Saved {len(swipe_features)} swipe features to {swipe_csv_path}")
+        if typing_features:
+            typing_df = pd.DataFrame(typing_features)
+            typing_csv_path = os.path.abspath('typing_features_data.csv')
+            typing_df.to_csv(typing_csv_path, index=False)
+            logger.info(f"Saved {len(typing_features)} typing features to {typing_csv_path}")
     except Exception as e:
         logger.error(f'Server crashed: {e}')
