@@ -14,7 +14,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
-
+import canaraLogo from '../../public/canara2.png'
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
   scrollToBottom(duration?: number): Promise<void>;
@@ -77,13 +77,15 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <IonPage className="h-full">
+    <IonPage className="h-full bg-gradient-to-b from-white to-[#01A0E3]">
       <IonContent fullscreen ref={contentRef as any}>
-        <div className="flex flex-col items-center bg-white">
-          <img src="/LoginHeader.png" alt="Logo" className="w-full" />
-          <div className="w-full max-w-md px-6 py-8">
+        <div className="flex flex-col h-screen justify-center items-center bg-gradient-to-b from-white to-[#01A0E3]">
+          <div className="w-full bg-white rounded-lg shadow-md max-w-md px-6 py-8">
+            <div className='w-full flex flex-row justify-center mb-10'>
+            <img src={canaraLogo} alt="Logo" className="h-12" />
+            </div>
             <div className="w-full text-center text-black font-bold text-3xl mb-10">
-              Banking that Knows It's <div className="text-blue-500">You</div>
+              Banking that Knows It's <div className="text-blue-400">You</div>
             </div>
             <div className="mb-4">
               <IonLabel className="mb-1 block text-sm font-medium text-gray-700">
@@ -128,17 +130,16 @@ const LoginPage: React.FC = () => {
               </IonInput>
             </div>
 
-            <IonButton
-              expand="block"
-              className="h-12 rounded-lg bg-indigo-600 text-base font-semibold hover:bg-indigo-700"
+            <button
+              className="w-full h-12 rounded-lg bg-blue-900 text-white font-semibold"
               onClick={handleSignup}
             >
               Login
-            </IonButton>
+            </button>
 
             <p className="mt-6 text-center text-sm text-gray-600">
               New here?{' '}
-              <a href="#" className="font-medium text-indigo-600 hover:underline">
+              <a href="#" className="font-medium text-blue-900 hover:underline">
                 Signup
               </a>
             </p>

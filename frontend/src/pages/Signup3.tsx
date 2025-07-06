@@ -1,4 +1,14 @@
 import React, { useRef, useState } from 'react';
+import {
+  MapPin,
+  Building,
+  Map,
+  Hash,
+  Briefcase,
+  DollarSign,
+  CreditCard,
+  CheckSquare,
+} from 'lucide-react';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -43,8 +53,8 @@ const Signup3: React.FC = () => {
   };
 
   return (
-    <Layout background="bg-white" contentRef={contentRef}>
-      <div className="min-h-screen w-full bg-white p-5 flex flex-col">
+    <Layout contentRef={contentRef}>
+      <div className="bg-white rounded-md shadow-md m-2 min-h-screen w-full p-5 flex flex-col">
         <div className="text-black text-3xl font-bold mb-4">Sign Up</div>
         {/* Progress Bar */}
         <div className="flex flex-row gap-2 mb-10 w-full">
@@ -52,12 +62,12 @@ const Signup3: React.FC = () => {
           <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
         </div>
 
-        <div className="flex flex-col gap-4 justify-center">
+        <div className="bg-white flex flex-col gap-4 justify-center">
           {/* Address */}
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                Address
+                <MapPin className="h-4 w-4" /> Address
               </label>
               <input
                 type="text"
@@ -70,7 +80,7 @@ const Signup3: React.FC = () => {
                   onInputChange('address')(customEvent);
                 }}
                 placeholder="Address"
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               />
             </div>
@@ -79,7 +89,7 @@ const Signup3: React.FC = () => {
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                City
+                <Building className="h-4 w-4" /> City
               </label>
               <input
                 type="text"
@@ -92,7 +102,7 @@ const Signup3: React.FC = () => {
                   onInputChange('city')(customEvent);
                 }}
                 placeholder="City"
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               />
             </div>
@@ -101,12 +111,12 @@ const Signup3: React.FC = () => {
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                State
+                <Map className="h-4 w-4" /> State
               </label>
               <select
                 value={formData.state}
                 onChange={e => handleChange('state', e.target.value)}
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               >
                 <option value="">Select State</option>
@@ -120,7 +130,7 @@ const Signup3: React.FC = () => {
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                Pincode
+                <Hash className="h-4 w-4" /> Pincode
               </label>
               <input
                 type="text"
@@ -133,7 +143,7 @@ const Signup3: React.FC = () => {
                   onInputChange('pincode')(customEvent);
                 }}
                 placeholder="Pincode"
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               />
             </div>
@@ -142,7 +152,7 @@ const Signup3: React.FC = () => {
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                Occupation
+                <Briefcase className="h-4 w-4" /> Occupation
               </label>
               <input
                 type="text"
@@ -155,7 +165,7 @@ const Signup3: React.FC = () => {
                   onInputChange('occupation')(customEvent);
                 }}
                 placeholder="Occupation"
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               />
             </div>
@@ -164,7 +174,7 @@ const Signup3: React.FC = () => {
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                Income
+                <DollarSign className="h-4 w-4" /> Income
               </label>
               <input
                 type="number"
@@ -177,7 +187,7 @@ const Signup3: React.FC = () => {
                   onInputChange('income')(customEvent);
                 }}
                 placeholder="Income"
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               />
             </div>
@@ -186,12 +196,12 @@ const Signup3: React.FC = () => {
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
-                Account Type
+                <CreditCard className="h-4 w-4" /> Account Type
               </label>
               <select
                 value={formData.accountType}
                 onChange={e => handleChange('accountType', e.target.value)}
-                style={{ color: 'black', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
                 className="w-full"
               >
                 <option value="">Select Account Type</option>
@@ -209,7 +219,9 @@ const Signup3: React.FC = () => {
               onChange={e => handleChange('agreeTerms', e.target.checked)}
               style={{ width: '1.25rem', height: '1.25rem', accentColor: '#2563eb' }}
             />
-            <label className="text-sm text-gray-700">I agree to the Terms & Conditions</label>
+            <label className="text-sm text-gray-700 flex items-center gap-1">
+              <CheckSquare className="h-4 w-4" /> I agree to the Terms & Conditions
+            </label>
           </div>
           {/* Submit Button */}
           <div className="flex w-full justify-center gap-1 my-2">

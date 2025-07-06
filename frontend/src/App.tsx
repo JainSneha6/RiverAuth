@@ -53,12 +53,12 @@ const App: React.FC = () => (
     {/* Side Drawer Menu */}
     <IonMenu side="start" menuId="main-menu" contentId="main-content" className="custom-menu">
       <IonMenuContent className="bg-white border-r border-gray-200">
-        <div className="px-6 py-5 border-b border-gray-200">
+        <div className="bg-white px-6 py-5 border-b border-gray-200">
           <div className="text-2xl font-bold text-blue-600 tracking-tight">RiverAuth</div>
         </div>
-        <IonList>
+        <IonList >
           <IonMenuToggle autoHide={false}>
-            <IonItem button routerLink="/dashboard">
+            <IonItem button routerLink="/dashboard" className='bg-white'>
               <IonIcon icon={home} slot="start" className="text-xl text-blue-600" />
               Dashboard
             </IonItem>
