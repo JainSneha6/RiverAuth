@@ -18,6 +18,8 @@ event_queue = deque()
 tap_features = []  # Store tap features
 swipe_features = []  # Store swipe features
 typing_features = []  # Store typing features
+geolocation_features = []  # Store geolocation features
+ip_features = []  # Store IP features
 last_event_time = {}  # Track last event time per client
 event_counts = {}  # Track event counts per client
 session_stats = {}  # Track session-based stats
@@ -29,6 +31,16 @@ SCREEN_HEIGHT = 1080  # Default, updated by device message
 FREQUENCY_THRESHOLD = 5  # Events per second for unusual frequency
 WPM_THRESHOLD_HIGH = 120  # WPM above which is considered unusual
 WPM_THRESHOLD_LOW = 10  # WPM below which is considered unusual
+
+def haversine(lat1, lon1, lat2, lon2):
+    """Calculate the great circle distance between two points on Earth (in km)."""
+    R = 6371  # Earth radius in km
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    return R * c
 
 def get_region(x, y, screen_width, screen_height):
     """Assign screen region based on coordinates."""
@@ -59,12 +71,12 @@ async def process_events():
             event = event_queue.popleft()
             event_type = event.get('type')
             event_data = event.get('data', {})
-            event_ts = event.get('ts', time.time() * 1000) / 1000  # Convert to seconds
+            event_ts = event.get('timestamp', time.time() * 1000) / 1000  # Convert to seconds
             client_ip = event.get('client_ip', 'unknown')
             user_id = event_data.get('user_id', client_ip)  # Use client_ip if user_id not provided
 
             # Handle unexpected event types
-            if event_type not in ['tap', 'swipe', 'device', 'typing']:
+            if event_type not in ['tap', 'swipe', 'device', 'typing', 'geolocation', 'ip']:
                 logger.warning(f"Unknown event type: {event_type}, skipping")
                 continue
 
@@ -77,12 +89,13 @@ async def process_events():
 
             # Initialize client and user tracking
             if client_ip not in last_event_time:
-                last_event_time[client_ip] = {'tap': 0, 'swipe': 0, 'typing': 0, 'any': 0}
-                event_counts[client_ip] = {'tap': [], 'swipe': [], 'typing': []}
+                last_event_time[client_ip] = {'tap': 0, 'swipe': 0, 'typing': 0, 'geolocation': 0, 'ip': 0, 'any': 0}
+                event_counts[client_ip] = {'tap': [], 'swipe': [], 'typing': [], 'geolocation': [], 'ip': []}
                 session_stats[client_ip] = {
                     'tap_durations': [], 'swipe_speeds': [], 'swipe_distances': [],
                     'typing_wpms': [], 'typing_durations': [], 'typing_lengths': [],
                     'event_times': [], 'tap_times': [], 'swipe_times': [], 'typing_times': [],
+                    'geolocation_times': [], 'ip_times': [],  # Added to prevent KeyError
                     'regions': [], 'directions': [], 'event_sequence': [], 'targets': [], 'fields': []
                 }
             if user_id not in user_stats:
@@ -90,18 +103,20 @@ async def process_events():
                     'tap_durations': [], 'tap_x': [], 'tap_y': [],
                     'swipe_speeds': [], 'swipe_distances': [], 'swipe_start_x': [], 'swipe_start_y': [],
                     'typing_wpms': [], 'typing_durations': [], 'typing_lengths': [], 'fields': [],
-                    'regions': [], 'directions': [], 'pointer_types': []
+                    'regions': [], 'directions': [], 'pointer_types': [],
+                    'geolocation_history': [], 'ip_history': [], 'velocities': [], 'region_hops': []
                 }
 
-            # Update event counts for frequency
+            # Update event counts for frequency (only for tap, swipe, typing)
             current_time = time.time()
-            event_counts[client_ip][event_type].append(current_time)
-            event_counts[client_ip][event_type] = [
-                t for t in event_counts[client_ip][event_type]
-                if current_time - t <= FREQUENCY_WINDOW
-            ]
-            session_stats[client_ip]['event_times'].append(event_ts)
-            session_stats[client_ip][f'{event_type}_times'].append(event_ts)
+            if event_type in ['tap', 'swipe', 'typing']:
+                event_counts[client_ip][event_type].append(current_time)
+                event_counts[client_ip][event_type] = [
+                    t for t in event_counts[client_ip][event_type]
+                    if current_time - t <= FREQUENCY_WINDOW
+                ]
+                session_stats[client_ip]['event_times'].append(event_ts)
+                session_stats[client_ip][f'{event_type}_times'].append(event_ts)
 
             # Base features
             features = {
@@ -111,10 +126,11 @@ async def process_events():
                 'event_count': sum(len(event_counts[client_ip][et]) for et in ['tap', 'swipe', 'typing']),
                 f'{event_type}_event_rate': (
                     len(event_counts[client_ip][event_type]) / FREQUENCY_WINDOW
-                    if FREQUENCY_WINDOW > 0 else 0
+                    if FREQUENCY_WINDOW > 0 and event_type in ['tap', 'swipe', 'typing'] else 0
                 ),
                 f'is_unusual_{event_type}_frequency': (
                     len(event_counts[client_ip][event_type]) / FREQUENCY_WINDOW > FREQUENCY_THRESHOLD
+                    if event_type in ['tap', 'swipe', 'typing'] else False
                 ),
                 f'time_since_last_{event_type}': (
                     event_ts - last_event_time[client_ip][event_type]
@@ -127,7 +143,7 @@ async def process_events():
                 'time_of_day': int(time.strftime("%H", time.localtime(event_ts))),
                 f'inter_{event_type}_variability': (
                     np.std(np.diff(session_stats[client_ip][f'{event_type}_times']))
-                    if len(session_stats[client_ip][f'{event_type}_times']) > 1 else 0
+                    if len(session_stats[client_ip][f'{event_type}_times']) > 1 and event_type in ['tap', 'swipe', 'typing'] else 0
                 ),
                 'event_sequence_entropy': compute_entropy(
                     [session_stats[client_ip]['event_sequence'].count(e) for e in ['tap', 'swipe', 'typing']]
@@ -420,6 +436,111 @@ async def process_events():
                 typing_df.to_csv(typing_csv_path, index=False)
                 logger.info(f"Saved {len(typing_features)} typing features to {typing_csv_path}")
 
+            elif event_type == 'geolocation':
+                latitude = event_data.get('latitude', 0)
+                longitude = event_data.get('longitude', 0)
+                altitude = event_data.get('altitude', None)
+                accuracy = event_data.get('accuracy', 0)
+                speed = event_data.get('speed', None)
+                current_point = {
+                    'timestamp': event_ts,
+                    'latitude': latitude,
+                    'longitude': longitude,
+                    'altitude': altitude,
+                    'accuracy': accuracy,
+                    'speed': speed
+                }
+                user_stats[user_id]['geolocation_history'].append(current_point)
+                session_stats[client_ip]['geolocation_times'].append(event_ts)
+
+                # Compute geolocation features
+                geo_features = {
+                    'timestamp': event_ts,
+                    'user_id': user_id,
+                    'client_ip': client_ip,
+                    'latitude': latitude,
+                    'longitude': longitude,
+                    'altitude': altitude,
+                    'accuracy': accuracy,
+                    'speed': speed
+                }
+
+                # Geo-Velocity
+                if len(user_stats[user_id]['geolocation_history']) >= 2:
+                    prev_point = user_stats[user_id]['geolocation_history'][-2]
+                    distance = haversine(prev_point['latitude'], prev_point['longitude'], latitude, longitude)
+                    time_diff = event_ts - prev_point['timestamp']
+                    velocity = distance / (time_diff / 3600) if time_diff > 0 else 0  # km/h
+                    user_stats[user_id]['velocities'].append(velocity)
+                    velocities = user_stats[user_id]['velocities']
+                    geo_features['geo_velocity_avg'] = np.mean(velocities)
+                    geo_features['geo_velocity_max'] = np.max(velocities)
+                    geo_features['geo_velocity_var'] = np.var(velocities) if velocities else 0
+                else:
+                    geo_features.update({
+                        'geo_velocity_avg': 0,
+                        'geo_velocity_max': 0,
+                        'geo_velocity_var': 0
+                    })
+
+                # Distance from Home Base and Radius of Gyration
+                if user_stats[user_id]['geolocation_history']:
+                    latitudes = [p['latitude'] for p in user_stats[user_id]['geolocation_history']]
+                    longitudes = [p['longitude'] for p in user_stats[user_id]['geolocation_history']]
+                    mean_lat = np.mean(latitudes)
+                    mean_lon = np.mean(longitudes)
+                    distances = [haversine(mean_lat, mean_lon, lat, lon) for lat, lon in zip(latitudes, longitudes)]
+                    geo_features['distance_from_home_mean'] = np.mean(distances) if distances else 0
+                    geo_features['distance_from_home_p90'] = np.percentile(distances, 90) if distances else 0
+                    geo_features['radius_of_gyration'] = np.sqrt(np.mean([d**2 for d in distances])) if distances else 0
+                else:
+                    geo_features.update({
+                        'distance_from_home_mean': 0,
+                        'distance_from_home_p90': 0,
+                        'radius_of_gyration': 0
+                    })
+
+                geolocation_features.append(geo_features)
+                geo_df = pd.DataFrame(geolocation_features)
+                geo_csv_path = os.path.abspath('geolocation_features_data.csv')
+                geo_df.to_csv(geo_csv_path, index=False)
+                logger.info(f"Saved {len(geolocation_features)} geolocation features to {geo_csv_path}")
+
+            elif event_type == 'ip':
+                ip = event_data.get('ip', 'unknown')
+                region = event_data.get('region', 'unknown')
+                country = event_data.get('country', 'unknown')
+                current_ip = {
+                    'timestamp': event_ts,
+                    'ip': ip,
+                    'region': region,
+                    'country': country
+                }
+                if user_stats[user_id]['ip_history'] and user_stats[user_id]['ip_history'][-1]['region'] != region:
+                    user_stats[user_id]['region_hops'].append(event_ts)
+                user_stats[user_id]['ip_history'].append(current_ip)
+                session_stats[client_ip]['ip_times'].append(event_ts)
+
+                # Compute IP features
+                hops = user_stats[user_id]['region_hops']
+                ip_drift_rate_week = sum(1 for hop in hops if event_ts - hop <= 7 * 86400)
+                ip_drift_rate_month = sum(1 for hop in hops if event_ts - hop <= 30 * 86400)
+                ip_features_dict = {
+                    'timestamp': event_ts,
+                    'user_id': user_id,
+                    'client_ip': client_ip,
+                    'ip': ip,
+                    'region': region,
+                    'country': country,
+                    'ip_drift_rate_week': ip_drift_rate_week,
+                    'ip_drift_rate_month': ip_drift_rate_month
+                }
+                ip_features.append(ip_features_dict)
+                ip_df = pd.DataFrame(ip_features)
+                ip_csv_path = os.path.abspath('ip_features_data.csv')
+                ip_df.to_csv(ip_csv_path, index=False)
+                logger.info(f"Saved {len(ip_features)} ip features to {ip_csv_path}")
+
             # Update event time
             last_event_time[client_ip][event_type] = event_ts
             last_event_time[client_ip]['any'] = event_ts
@@ -489,5 +610,15 @@ if __name__ == '__main__':
             typing_csv_path = os.path.abspath('typing_features_data.csv')
             typing_df.to_csv(typing_csv_path, index=False)
             logger.info(f"Saved {len(typing_features)} typing features to {typing_csv_path}")
+        if geolocation_features:
+            geo_df = pd.DataFrame(geolocation_features)
+            geo_csv_path = os.path.abspath('geolocation_features_data.csv')
+            geo_df.to_csv(geo_csv_path, index=False)
+            logger.info(f"Saved {len(geolocation_features)} geolocation features to {geo_csv_path}")
+        if ip_features:
+            ip_df = pd.DataFrame(ip_features)
+            ip_csv_path = os.path.abspath('ip_features_data.csv')
+            ip_df.to_csv(ip_csv_path, index=False)
+            logger.info(f"Saved {len(ip_features)} ip features to {ip_csv_path}")
     except Exception as e:
         logger.error(f'Server crashed: {e}')

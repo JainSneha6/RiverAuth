@@ -15,7 +15,7 @@ interface IpData {
   country: string;
 }
 
-const apiKey = 'd37a7bae63fad2b608561af1a4ba41bd';
+const apiKey = 'cff0abb5a0b26b596f806c1b53c13c40';
 
 export const useGeolocationTracking = (send: (payload: unknown) => void, isConnected: boolean) => {
   const [pendingGeoData, setPendingGeoData] = useState<GeolocationData[]>([]);
@@ -104,7 +104,7 @@ export const useGeolocationTracking = (send: (payload: unknown) => void, isConne
           } catch (error) {
             console.error('Failed to fetch IP data:', error);
           }
-        }, 360000); // Check every hour
+        }, 360); // Check every hour
       } catch (error) {
         console.error('Error starting geolocation tracking:', error);
       }
