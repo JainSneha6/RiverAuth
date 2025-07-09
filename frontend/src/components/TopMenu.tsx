@@ -1,12 +1,16 @@
 import { IonIcon } from '@ionic/react'
 import React from 'react'
 import { menu } from 'ionicons/icons';
+import banner from '../../public/Banner-nobg.png'
 
 const TopMenu = () => {
   return (
-    <div className='flex justify-between border-black w-full text-black'>
+    <div className='flex justify-between items-center border-black w-full  text-black'>
+      <div className=' grid grid-cols-3 gap-2 items-center'>
       <IonIcon icon={menu} className="text-4xl text-black cursor-pointer" onClick={() => (document.querySelector('ion-menu') as any)?.open()} />
-      <div className='h-12 w-12 bg-yellow-300 rounded-full'></div>
+      <img src={banner} className=''/>
+      </div>
+      
     </div>
   )
 }

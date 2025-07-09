@@ -45,6 +45,7 @@ import TransferFundsPage from './pages/TransferFundsPage';
 import { WebSocketProvider } from './hooks/useWebSocketContext';
 import ProfilePage from './pages/ProfilePage';
 import OnboardingPage from './pages/OnboardingPage';
+import DrawerMenu from './components/DrawerMenu';
 
 setupIonicReact();
 
@@ -52,39 +53,7 @@ const App: React.FC = () => (
   <WebSocketProvider url="ws://localhost:8081">
   <IonApp>
     {/* Side Drawer Menu */}
-    <IonMenu side="start" menuId="main-menu" contentId="main-content" className="custom-menu">
-      <IonMenuContent className="bg-white border-r border-gray-200">
-        <div className="bg-white px-6 py-5 border-b border-gray-200">
-          <div className="text-2xl font-bold text-blue-600 tracking-tight">RiverAuth</div>
-        </div>
-        <IonList >
-          <IonMenuToggle autoHide={false}>
-            <IonItem button routerLink="/dashboard" className='bg-white'>
-              <IonIcon icon={home} slot="start" className="text-xl text-blue-600" />
-              Dashboard
-            </IonItem>
-          </IonMenuToggle>
-          <IonMenuToggle autoHide={false}>
-            <IonItem button routerLink="/profile">
-              <IonIcon icon={person} slot="start" className="text-xl text-blue-600" />
-              Profile
-            </IonItem>
-          </IonMenuToggle>
-          <IonMenuToggle autoHide={false}>
-            <IonItem button routerLink="/pay-bills">
-              <IonIcon icon={card} slot="start" className="text-xl text-blue-600" />
-              Pay Bills
-            </IonItem>
-          </IonMenuToggle>
-          <IonMenuToggle autoHide={false}>
-            <IonItem button routerLink="/transfer-funds">
-              <IonIcon icon={swapHorizontal} slot="start" className="text-xl text-blue-600" />
-              Transfer Funds
-            </IonItem>
-          </IonMenuToggle>
-        </IonList>
-      </IonMenuContent>
-    </IonMenu>
+    <DrawerMenu />
     <IonReactRouter>
       <IonRouterOutlet>
 

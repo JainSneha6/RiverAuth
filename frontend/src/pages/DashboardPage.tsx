@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking';
@@ -6,22 +6,40 @@ import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
-import { IonInput } from '@ionic/react';
+import {
+  IoDocumentTextOutline,
+  IoCardOutline,
+  IoCashOutline,
+  IoSwapHorizontalOutline,
+} from 'react-icons/io5';
 
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
   scrollToBottom(duration?: number): Promise<void>;
 }
 
+const QuickActionButton: React.FC<{
+  name: string;
+  Icon: React.ElementType;
+  onClick: () => void;
+}> = ({ name, Icon, onClick }) => (
+  <div className="bg-white h-36 w-full rounded-md flex flex-col items-center justify-center shadow-md">
+    <button onClick={onClick} className="flex flex-col items-center justify-center">
+      <Icon className="text-4xl text-blue-600 mb-2" />
+      <span className="text-sm font-medium text-gray-800">{name}</span>
+    </button>
+  </div>
+);
+
 const DashboardPage: React.FC = () => {
   const contentRef = useRef<IonContentElement>(null);
   const history = useHistory();
-  const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
-  const { taps } = useGestureTracking(contentRef, send);
-  const [a, setA] = useState();
-  const { deviceInfo } = useDeviceTracking(send, isConnected);
-  const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
-  const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
+  const { send, isConnected } = useWebSocket('ws://localhost:8081');
+  useGestureTracking(contentRef, send);
+  const [a, setA] = useState('');
+  useDeviceTracking(send, isConnected);
+  useGeolocationTracking(send, isConnected);
+  const { onInputChange } = useTypingSpeedTracking(send, isConnected);
 
   const handleButtonClick = (buttonName: string) => {
     const buttonData = {
@@ -35,10 +53,40 @@ const DashboardPage: React.FC = () => {
     console.log(`Button clicked: ${buttonName}`, buttonData);
   };
 
-  const handleSearchInput = (e: CustomEvent) => {
-    const value = (e.detail.value as string) || '';
-    onInputChange('search')(e as CustomEvent<{ value: string }>);
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setA(value);
+    onInputChange('search')({ detail: { value } } as any);
   };
+
+  const quickActions = [
+    {
+      name: 'Documents',
+      Icon: IoDocumentTextOutline,
+      onClick: () => handleButtonClick('Documents'),
+    },
+    {
+      name: 'Cards',
+      Icon: IoCardOutline,
+      onClick: () => handleButtonClick('Cards'),
+    },
+    {
+      name: 'Pay Bills',
+      Icon: IoCashOutline,
+      onClick: () => {
+        handleButtonClick('Pay Bills');
+        history.push('/pay-bills');
+      },
+    },
+    {
+      name: 'Transfer Funds',
+      Icon: IoSwapHorizontalOutline,
+      onClick: () => {
+        handleButtonClick('Transfer Funds');
+        history.push('/transfer-funds');
+      },
+    },
+  ];
 
   const recentActions = [
     {
@@ -102,64 +150,21 @@ const DashboardPage: React.FC = () => {
           value={a}
           onChange={handleSearchInput}
           className="w-full bg-white rounded-md shadow-md p-2"
-          style={{ color:'black' }}
+          style={{ color: 'black' }}
         />
       </div>
 
-      <div className="mt-5">
+      <div className="mt-5 w-full">
         <div className="text-black">Quick Actions</div>
-        <div className="mt-2 w-full grid grid-cols-3 grid-rows-2 gap-4 rounded-md">
-          <button
-            className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => handleButtonClick('Documents')}
-          >
-            <img src="/sheets of documents.png" alt="Documents" className="h-18 w-18 mb-2" />
-            <span className="text-sm font-medium text-gray-800">Documents</span>
-          </button>
-          <button
-            className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => handleButtonClick('Cards')}
-          >
-            <img src="/credit cards.png" alt="Cards" className="h-18 w-auto mb-2" />
-            <span className="text-sm font-medium text-gray-800">Cards</span>
-          </button>
-          <button
-            className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => {
-              handleButtonClick('Pay Bills');
-              history.push('/pay-bills');
-            }}
-          >
-            <img src="/bills.png" alt="Pay Bills" className="h-18 w-18 mb-2" />
-            <span className="text-sm font-medium text-gray-800">Pay Bills</span>
-          </button>
-          <button
-            className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => {
-              handleButtonClick('Contact Us');
-              history.push('/profile');
-            }}
-          >
-            <img src="/contact.png" alt="Contact" className="h-18 w-18 mb-2" />
-            <span className="text-sm font-medium text-gray-800">Contact Us</span>
-          </button>
-          <button
-            className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => handleButtonClick('Security Questions')}
-          >
-            <img src="/security configuration.png" alt="Security" className="h-18 w-18 mb-2" />
-            <span className="text-sm font-medium text-gray-800">Security Questions</span>
-          </button>
-          <button
-            className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
-            onClick={() => {
-              handleButtonClick('Transfer Funds');
-              history.push('/transfer-funds');
-            }}
-          >
-            <img src="/money and phone.png" alt="Transfer" className="h-18 w-18 mb-2" />
-            <span className="text-sm font-medium text-gray-800">Transfer Funds</span>
-          </button>
+        <div className="mt-2 w-full grid grid-cols-2 grid-rows-2 gap-4 rounded-md">
+          {quickActions.map((action, index) => (
+            <QuickActionButton
+              key={index}
+              name={action.name}
+              Icon={action.Icon}
+              onClick={action.onClick}
+            />
+          ))}
         </div>
       </div>
 
