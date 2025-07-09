@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking';
@@ -18,6 +18,7 @@ const DashboardPage: React.FC = () => {
   const history = useHistory();
   const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
   const { taps } = useGestureTracking(contentRef, send);
+  const [a, setA] = useState();
   const { deviceInfo } = useDeviceTracking(send, isConnected);
   const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
   const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
@@ -95,30 +96,31 @@ const DashboardPage: React.FC = () => {
         <div className="text-6xl font-bold">69,420.00</div>
       </div>
 
-      <div className="mt-5">
-        <IonInput
+      <div className="mt-5 w-full">
+        <input
           placeholder="Search...."
-          onIonInput={handleSearchInput}
-          className="bg-white rounded-md shadow-md p-2"
+          value={a}
+          onChange={handleSearchInput}
+          className="w-full bg-white rounded-md shadow-md p-2"
           style={{ color:'black' }}
         />
       </div>
 
       <div className="mt-5">
         <div className="text-black">Quick Actions</div>
-        <div className="mt-2 w-full grid grid-cols-3 grid-rows-2 gap-2">
+        <div className="mt-2 w-full grid grid-cols-3 grid-rows-2 gap-4 rounded-md">
           <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
             onClick={() => handleButtonClick('Documents')}
           >
-            <img src="/sheets of documents.png" alt="Documents" className="h-24 w-24 mb-2" />
+            <img src="/sheets of documents.png" alt="Documents" className="h-18 w-18 mb-2" />
             <span className="text-sm font-medium text-gray-800">Documents</span>
           </button>
           <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
             onClick={() => handleButtonClick('Cards')}
           >
-            <img src="/credit cards.png" alt="Cards" className="h-24 w-auto mb-2" />
+            <img src="/credit cards.png" alt="Cards" className="h-18 w-auto mb-2" />
             <span className="text-sm font-medium text-gray-800">Cards</span>
           </button>
           <button
@@ -128,7 +130,7 @@ const DashboardPage: React.FC = () => {
               history.push('/pay-bills');
             }}
           >
-            <img src="/bills.png" alt="Pay Bills" className="h-24 w-24 mb-2" />
+            <img src="/bills.png" alt="Pay Bills" className="h-18 w-18 mb-2" />
             <span className="text-sm font-medium text-gray-800">Pay Bills</span>
           </button>
           <button
@@ -138,14 +140,14 @@ const DashboardPage: React.FC = () => {
               history.push('/profile');
             }}
           >
-            <img src="/contact.png" alt="Contact" className="h-24 w-24 mb-2" />
+            <img src="/contact.png" alt="Contact" className="h-18 w-18 mb-2" />
             <span className="text-sm font-medium text-gray-800">Contact Us</span>
           </button>
           <button
             className="bg-white h-36 w-36 rounded-md flex flex-col items-center justify-center shadow-md"
             onClick={() => handleButtonClick('Security Questions')}
           >
-            <img src="/security configuration.png" alt="Security" className="h-24 w-24 mb-2" />
+            <img src="/security configuration.png" alt="Security" className="h-18 w-18 mb-2" />
             <span className="text-sm font-medium text-gray-800">Security Questions</span>
           </button>
           <button
@@ -155,7 +157,7 @@ const DashboardPage: React.FC = () => {
               history.push('/transfer-funds');
             }}
           >
-            <img src="/money and phone.png" alt="Transfer" className="h-24 w-24 mb-2" />
+            <img src="/money and phone.png" alt="Transfer" className="h-18 w-18 mb-2" />
             <span className="text-sm font-medium text-gray-800">Transfer Funds</span>
           </button>
         </div>

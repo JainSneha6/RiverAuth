@@ -170,7 +170,7 @@ const PayBillsPage: React.FC = () => {
           {addPayeeOptions.map(({ label, icon: Icon }, idx) => (
             <div
               key={idx}
-              className="flex-shrink-0 bg-white h-32 w-32 rounded-lg border border-gray-300
+              className=" bg-white w-full h-24 rounded-lg border border-gray-300
                flex flex-col items-center justify-center p-2 shadow-md text-center"
             >
               <Icon className="h-8 w-8 text-blue-600 mb-2" />

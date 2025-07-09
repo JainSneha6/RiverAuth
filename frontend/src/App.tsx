@@ -44,6 +44,7 @@ import PayBillsPage from './pages/PayBillsPage';
 import TransferFundsPage from './pages/TransferFundsPage';
 import { WebSocketProvider } from './hooks/useWebSocketContext';
 import ProfilePage from './pages/ProfilePage';
+import OnboardingPage from './pages/OnboardingPage';
 
 setupIonicReact();
 
@@ -117,6 +118,10 @@ const App: React.FC = () => (
 
         <Route exact path="/">
           <Redirect to="/dashboard" />
+        </Route>
+
+        <Route exact path="/onboarding-questions">
+          <OnboardingPage />
         </Route>
 
       </IonRouterOutlet>
