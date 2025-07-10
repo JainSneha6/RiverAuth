@@ -41,6 +41,15 @@ const DashboardPage: React.FC = () => {
   useGeolocationTracking(send, isConnected);
   const { onInputChange } = useTypingSpeedTracking(send, isConnected);
 
+  // User ID only
+console.log('User ID:', JSON.parse(localStorage.getItem('user'))?.id)
+
+// User details
+console.table(JSON.parse(localStorage.getItem('user')))
+
+// Session info
+console.table(JSON.parse(localStorage.getItem('session')))
+
   const handleButtonClick = (buttonName: string) => {
     const buttonData = {
       type: 'button_click',

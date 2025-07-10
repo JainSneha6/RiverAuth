@@ -1,4 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
+import { IonSpinner, IonToast } from '@ionic/react';
 import {
   MapPin,
   Building,
@@ -10,11 +12,13 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import { useAuth } from '../contexts/AuthContext';
 import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
+import { apiService } from '../services/api';
 
 const states = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
@@ -40,26 +44,112 @@ const Signup3: React.FC = () => {
     accountType: '',
     agreeTerms: false,
   });
+  const [showToast, setShowToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
 
+  const history = useHistory();
+  const { signupStep2, isLoading, error, clearError, user, isAuthenticated } = useAuth();
   const contentRef = useRef<IonContentElement>(null);
-  const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
+  const { send, isConnected, error: wsError } = useWebSocket('ws://localhost:8081');
   const { taps } = useGestureTracking(contentRef, send);
   const { deviceInfo } = useDeviceTracking(send, isConnected);
   const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
   const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
 
+  // Redirect if not authenticated or completed step 1
+  useEffect(() => {
+    console.log('Signup3 mounted - Auth state:', { isAuthenticated, user, signup_step: user?.signup_step });
+    if (!isAuthenticated || !user || user.signup_step < 1) {
+      console.log('Signup3 redirecting to signup2 - missing auth or incomplete step 1');
+      history.push('/signup2');
+    }
+  }, [isAuthenticated, user, history]);
+
+  // Clear auth errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  // Show authentication errors
+  useEffect(() => {
+    if (error) {
+      setToastMsg(error);
+      setShowToast(true);
+    }
+  }, [error]);
+
   const handleChange = (field: string, value: string | boolean) => {
     setFormData({ ...formData, [field]: value });
   };
 
+  const validateForm = (): string | null => {
+    const { address, city, state, pincode, occupation, income, accountType, agreeTerms } = formData;
+    
+    if (!address || !city || !state || !pincode || !occupation || !income || !accountType) {
+      return 'Please fill in all fields';
+    }
+    
+    if (!agreeTerms) {
+      return 'You must agree to the Terms & Conditions';
+    }
+    
+    if (!/^\d{6}$/.test(pincode)) {
+      return 'Please enter a valid 6-digit pincode';
+    }
+    
+    if (isNaN(Number(income)) || Number(income) <= 0) {
+      return 'Please enter a valid income amount';
+    }
+    
+    return null;
+  };
+
+  const handleSignUp = async () => {
+    const validationError = validateForm();
+    if (validationError) {
+      setToastMsg(validationError);
+      setShowToast(true);
+      return;
+    }
+
+    try {
+      clearError();
+      
+      // Track form submission with behavioral data
+      const submissionData = {
+        type: 'signup_step2_submission',
+        timestamp: Date.now(),
+        accountType: formData.accountType,
+        formCompleted: true,
+        income: formData.income,
+      };
+      send(submissionData);
+      
+      await signupStep2(formData);
+      
+      setToastMsg('Step 2 completed! Please set up security questions.');
+      setShowToast(true);
+      
+      // Navigate to security questions (Signup4) after successful completion
+      setTimeout(() => {
+        history.push('/signup4');
+      }, 1500);
+      
+    } catch (err) {
+      console.error('Signup step 2 failed:', err);
+      // Error will be shown via useEffect above
+    }
+  };
+
   return (
-    <Layout contentRef={contentRef}>
+    <Layout contentRef={contentRef} showTopMenu={false}>
       <div className="bg-white rounded-md shadow-md m-2 min-h-screen w-full p-5 flex flex-col">
         <div className="text-black text-3xl font-bold mb-4">Sign Up</div>
-        {/* Progress Bar */}
+        {/* Progress Bar - Step 2 of 3 */}
         <div className="flex flex-row gap-2 mb-10 w-full">
           <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
           <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
+          <div className="flex-1 h-2 rounded bg-white border border-blue-600"></div>
         </div>
 
         <div className="bg-white flex flex-col gap-4 justify-center">
@@ -226,13 +316,22 @@ const Signup3: React.FC = () => {
           {/* Submit Button */}
           <div className="flex w-full justify-center gap-1 my-2">
             <button
-              className="bg-blue-600 text-white font-bold py-4 w-full rounded-lg hover:bg-blue-700 transition shadow-lg"
+              className="bg-blue-600 text-white font-bold py-4 w-full rounded-lg hover:bg-blue-700 transition shadow-lg flex items-center justify-center"
               style={{ minHeight: '30px' }}
+              onClick={handleSignUp}
+              disabled={isLoading}
             >
-              Sign Up
+              {isLoading ? <IonSpinner name="crescent" /> : 'Complete Registration'}
             </button>
           </div>
         </div>
+        
+        <IonToast
+          isOpen={showToast}
+          message={toastMsg}
+          duration={2200}
+          onDidDismiss={() => setShowToast(false)}
+        />
       </div>
     </Layout>
   );

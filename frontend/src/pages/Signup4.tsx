@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { IonSpinner, IonToast } from '@ionic/react';
 import Layout from '../components/Layout';
@@ -15,8 +15,6 @@ interface IonContentElement extends HTMLElement {
   scrollToBottom(duration?: number): Promise<void>;
 }
 
-type Props = {};
-
 const securityQuestions = {
   personalHistory: [
     "What is the name of the street where you grew up?",
@@ -26,14 +24,14 @@ const securityQuestions = {
     "What is the name of the elementary school you attended?",
     "What was the make and model of your first car?",
     "What was the name of your childhood best friend?",
-    "What is your mother’s maiden name?",
+    "What is your mother's maiden name?",
     "What was the name of the hospital where you were born?"
   ],
   favorites: [
     "What is your favorite book?",
     "What is your favorite movie?",
     "What is your favorite food?",
-    "What is your favorite teacher’s name?",
+    "What is your favorite teacher's name?",
     "What is your favorite sports team?"
   ],
   experiencesMilestones: [
@@ -61,10 +59,10 @@ const shuffleArray = (array: string[]) => {
   return arr;
 };
 
-const OnboardingPage = (props: Props) => {
+const Signup4: React.FC = () => {
   const allQuestions = Object.values(securityQuestions).flat();
   const history = useHistory();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, clearError, error } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -85,12 +83,33 @@ const OnboardingPage = (props: Props) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<string[]>(Array(5).fill(''));
 
-  // Redirect if not authenticated
-  React.useEffect(() => {
-    if (!isAuthenticated) {
-      history.push('/login');
+  // Redirect if not authenticated or not completed step 2
+  useEffect(() => {
+    console.log('Signup4 mounted - Auth state:', { isAuthenticated, user, signup_step: user?.signup_step, is_complete: user?.is_complete });
+    if (!isAuthenticated || !user || user.signup_step < 2 || !user.is_complete) {
+      console.log('Signup4 redirecting - missing auth or incomplete previous steps');
+      if (!isAuthenticated || !user) {
+        history.push('/signup2');
+      } else if (user.signup_step < 1) {
+        history.push('/signup2');
+      } else if (user.signup_step < 2 || !user.is_complete) {
+        history.push('/signup3');
+      }
     }
-  }, [isAuthenticated, history]);
+  }, [isAuthenticated, user, history]);
+
+  // Clear auth errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  // Show authentication errors
+  useEffect(() => {
+    if (error) {
+      setToastMsg(error);
+      setShowToast(true);
+    }
+  }, [error]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -162,6 +181,7 @@ const OnboardingPage = (props: Props) => {
         user_id: user.id,
         questions_count: questionsData.length,
         completed: true,
+        signup_step: 'security_questions'
       };
       send(submissionData);
 
@@ -170,17 +190,17 @@ const OnboardingPage = (props: Props) => {
 
       // Store behavioral data
       try {
-        await apiService.storeBehavioralData('security_questions_completed', submissionData);
+        await apiService.storeBehavioralData('signup_security_questions_completed', submissionData);
       } catch (behavioralError) {
         console.warn('Failed to store behavioral data:', behavioralError);
       }
 
-      setToastMsg('Security questions saved successfully! 🎉');
+      setToastMsg('Registration completed successfully! 🎉 You can now log in.');
       setShowToast(true);
 
-      // Redirect to dashboard after successful submission
+      // Redirect to login after successful signup completion
       setTimeout(() => {
-        history.push('/dashboard');
+        history.push('/login');
       }, 2000);
 
     } catch (error) {
@@ -193,49 +213,63 @@ const OnboardingPage = (props: Props) => {
   };
 
   return (
-    <Layout contentRef={contentRef}>
-      <div className="max-w-xl mx-auto p-6 text-center space-y-6 text-black">
-        <h2 className="text-2xl font-semibold">Security Questions</h2>
-        <p className="text-sm text-gray-600">
-          Please answer these security questions. They will be used to verify your identity in the future.
-        </p>
+    <Layout contentRef={contentRef} showTopMenu={false}>
+      <div className="bg-white rounded-md shadow-md m-2 min-h-screen w-full p-5 flex flex-col">
+        <div className="text-black text-3xl font-bold mb-4">Sign Up</div>
         
-        <div className="bg-gray-100 p-6 rounded-xl shadow-md">
-          <p className="text-lg font-medium mb-4">
-            {selectedQuestions[currentIndex]}
-          </p>
-          <input
-            type="text"
-            value={answers[currentIndex]}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Type your answer"
-            disabled={isLoading}
-          />
+        {/* Progress Bar - Step 3 of 3 */}
+        <div className="flex flex-row gap-2 mb-10 w-full">
+          <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
+          <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
+          <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
         </div>
-        
-        <button
-          onClick={handleNext}
-          disabled={isLoading || !answers[currentIndex]?.trim()}
-          className="w-full h-12 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-        >
-          {isLoading ? (
-            <IonSpinner name="crescent" />
-          ) : (
-            currentIndex < selectedQuestions.length - 1 ? 'Next' : 'Submit'
-          )}
-        </button>
-        
-        <p className="text-sm text-gray-500">
-          Question {currentIndex + 1} of {selectedQuestions.length}
-        </p>
-        
-        {/* Progress bar */}
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / selectedQuestions.length) * 100}%` }}
-          ></div>
+
+        <div className="bg-white flex flex-col gap-6 justify-center">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-black mb-2">Security Questions</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Please answer these security questions. They will be used to verify your identity in the future.
+            </p>
+          </div>
+          
+          <div className="bg-gray-100 p-6 rounded-xl shadow-md">
+            <p className="text-lg font-medium mb-4 text-black">
+              {selectedQuestions[currentIndex]}
+            </p>
+            <input
+              type="text"
+              value={answers[currentIndex]}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Type your answer"
+              disabled={isLoading}
+              style={{ color: 'black' }}
+            />
+          </div>
+          
+          <button
+            onClick={handleNext}
+            disabled={isLoading || !answers[currentIndex]?.trim()}
+            className="w-full h-12 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {isLoading ? (
+              <IonSpinner name="crescent" />
+            ) : (
+              currentIndex < selectedQuestions.length - 1 ? 'Next' : 'Complete Registration'
+            )}
+          </button>
+          
+          <p className="text-sm text-gray-500 text-center">
+            Question {currentIndex + 1} of {selectedQuestions.length}
+          </p>
+          
+          {/* Progress bar for questions */}
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${((currentIndex + 1) / selectedQuestions.length) * 100}%` }}
+            ></div>
+          </div>
         </div>
         
         <IonToast
@@ -249,4 +283,4 @@ const OnboardingPage = (props: Props) => {
   );
 };
 
-export default OnboardingPage;
+export default Signup4;

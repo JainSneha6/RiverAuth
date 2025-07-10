@@ -4,10 +4,30 @@ import {
 } from '@ionic/react';
 import { home, person, card, swapHorizontal, logOut } from 'ionicons/icons';
 import React from 'react';
+import { useHistory } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 type Props = {}
 
 const DrawerMenu = (props: Props) => {
+  const history = useHistory();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      history.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const navigateTo = (path: string) => {
+    history.push(path);
+    // Close the menu
+    (document.querySelector('ion-menu') as any)?.close();
+  };
+
   return (
     <IonMenu side="start" menuId="main-menu" contentId="main-content">
       <div className='bg-white h-screen flex flex-col justify-between p-5'>
@@ -24,22 +44,22 @@ const DrawerMenu = (props: Props) => {
 
             <div className='text-black text-sm text-left border border-gray-200 rounded-md shadow-md p-3 my-1 flex items-center gap-3'>
               <IonIcon icon={person} className="text-blue-600 text-xl" />
-              <button>Profile</button>
+              <button onClick={() => navigateTo('/profile')}>Profile</button>
             </div>
 
             <div className='text-black text-sm text-left border border-gray-200 rounded-md shadow-md p-3 my-1 flex items-center gap-3'>
               <IonIcon icon={home} className="text-blue-600 text-xl" />
-              <button>Dashboard</button>
+              <button onClick={() => navigateTo('/dashboard')}>Dashboard</button>
             </div>
 
             <div className='text-black text-sm text-left border border-gray-200 rounded-md shadow-md p-3 my-1 flex items-center gap-3'>
               <IonIcon icon={card} className="text-blue-600 text-xl" />
-              <button>Pay Bills</button>
+              <button onClick={() => navigateTo('/pay-bills')}>Pay Bills</button>
             </div>
 
             <div className='text-black text-sm text-left border border-gray-200 rounded-md shadow-md p-3 my-1 flex items-center gap-3'>
               <IonIcon icon={swapHorizontal} className="text-blue-600 text-xl" />
-              <button>Transfer Funds</button>
+              <button onClick={() => navigateTo('/transfer-funds')}>Transfer Funds</button>
             </div>
 
           </div>
@@ -47,9 +67,14 @@ const DrawerMenu = (props: Props) => {
 
         {/* Logout Section */}
         <div>
-          <div className='bg-red-400 p-2 rounded-md flex items-center gap-3'>
+          <div className='bg-red-400 p-2 rounded-md flex items-center gap-3 cursor-pointer hover:bg-red-500 transition-colors'>
             <IonIcon icon={logOut} className="text-white text-xl" />
-            <button className='w-full text-white font-bold text-sm text-left'>Logout</button>
+            <button 
+              onClick={handleLogout}
+              className='w-full text-white font-bold text-sm text-left'
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>

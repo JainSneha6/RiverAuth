@@ -38,65 +38,76 @@ import '@ionic/react/css/palettes/dark.system.css';
 import './theme/variables.css';
 import Signup2 from './pages/Signup2';
 import Signup3 from './pages/Signup3';
+import Signup4 from './pages/Signup4';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PayBillsPage from './pages/PayBillsPage';
 import TransferFundsPage from './pages/TransferFundsPage';
 import { WebSocketProvider } from './hooks/useWebSocketContext';
+import { AuthProvider } from './contexts/AuthContext';
 import ProfilePage from './pages/ProfilePage';
 import OnboardingPage from './pages/OnboardingPage';
 import DrawerMenu from './components/DrawerMenu';
+import ErrorBoundary from './components/ErrorBoundary';
 
 setupIonicReact();
 
 const App: React.FC = () => (
-  <WebSocketProvider url="ws://localhost:8081">
-  <IonApp>
-    {/* Side Drawer Menu */}
-    <DrawerMenu />
-    <IonReactRouter>
-      <IonRouterOutlet>
+  <ErrorBoundary>
+    <AuthProvider>
+      <WebSocketProvider url="ws://localhost:8081">
+        <IonApp>
+          {/* Side Drawer Menu */}
+          <DrawerMenu />
+          <IonReactRouter>
+            <IonRouterOutlet>
 
-        <Route exact path="/login">
-          <LoginPage />
-        </Route>
+            <Route exact path="/login">
+              <LoginPage />
+            </Route>
 
-        <Route exact path="/signup2">
-          <Signup2 />
-        </Route>
+            <Route exact path="/signup2">
+              <Signup2 />
+            </Route>
 
-        <Route exact path="/signup3">
-          <Signup3 />
-        </Route>
+            <Route exact path="/signup3">
+              <Signup3 />
+            </Route>
 
-        <Route exact path="/profile">
-          <ProfilePage />
-        </Route>
+            <Route exact path="/signup4">
+              <Signup4 />
+            </Route>
 
-        <Route exact path="/pay-bills">
-          <PayBillsPage />
-        </Route>
+            <Route exact path="/profile">
+              <ProfilePage />
+            </Route>
 
-        <Route exact path="/dashboard">
-          <DashboardPage />
-        </Route>
+            <Route exact path="/pay-bills">
+              <PayBillsPage />
+            </Route>
 
-        <Route exact path="/transfer-funds">
-          <TransferFundsPage />
-        </Route>
+            <Route exact path="/dashboard">
+              <DashboardPage />
+            </Route>
 
-        <Route exact path="/">
-          <Redirect to="/dashboard" />
-        </Route>
+            <Route exact path="/transfer-funds">
+              <TransferFundsPage />
+            </Route>
 
-        <Route exact path="/onboarding-questions">
-          <OnboardingPage />
-        </Route>
+            <Route exact path="/onboarding-questions">
+              <OnboardingPage />
+            </Route>
 
-      </IonRouterOutlet>
-    </IonReactRouter>
-  </IonApp>
-  </WebSocketProvider>
+            <Route exact path="/">
+              <Redirect to="/login" />
+            </Route>
+
+          </IonRouterOutlet>
+        </IonReactRouter>
+      </IonApp>
+    </WebSocketProvider>
+  </AuthProvider>
+  </ErrorBoundary>
 );
 
 export default App;

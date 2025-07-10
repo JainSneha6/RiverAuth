@@ -6,14 +6,18 @@ import {
   IonButton,
   IonToast,
   IonIcon,
+  IonSpinner,
 } from '@ionic/react';
 import { personAdd, lockClosed } from 'ionicons/icons';
 import { useState, useRef, useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
+import { apiService } from '../services/api';
 import canaraLogo from '../../public/canara2.png'
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
@@ -21,48 +25,75 @@ interface IonContentElement extends HTMLElement {
 }
 
 const LoginPage: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
-  const passwordsMatch = password === confirm;
-  const allFilled = name && email && password && confirm;
-
+  const history = useHistory();
+  const { login, isLoading, error, clearError } = useAuth();
   const contentRef = useRef<IonContentElement>(null);
-  const { send, isConnected, error } = useWebSocket('ws://localhost:8081');
+  const { send, isConnected, error: wsError } = useWebSocket('ws://localhost:8081');
 
   const { taps } = useGestureTracking(contentRef, send);
   const { deviceInfo } = useDeviceTracking(send, isConnected);
   const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
   const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
 
-  const handleSignup = () => {
-    if (!allFilled) {
+  // Clear auth errors when component mounts or when user starts typing
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  // Show authentication errors
+  useEffect(() => {
+    if (error) {
+      setToastMsg(error);
+      setShowToast(true);
+    }
+  }, [error]);
+
+  const handleLogin = async () => {
+    if (!username || !password) {
       setToastMsg('Please fill in all fields');
       setShowToast(true);
       return;
     }
-    if (!passwordsMatch) {
-      setToastMsg('Passwords do not match');
+
+    try {
+      clearError();
+      
+      // Track login attempt with behavioral data
+      const loginData = {
+        type: 'login_attempt',
+        timestamp: Date.now(),
+        username: username,
+        passwordLength: password.length,
+        formCompleted: true,
+      };
+      send(loginData);
+      
+      // Store behavioral data if authenticated session exists
+      try {
+        await apiService.storeBehavioralData('login_attempt', loginData);
+      } catch (behavioralError) {
+        console.warn('Failed to store behavioral data:', behavioralError);
+      }
+
+      await login(username, password);
+      
+      setToastMsg('Login successful! 🎉');
       setShowToast(true);
-      return;
+      
+      // Redirect to dashboard after successful login
+      setTimeout(() => {
+        history.push('/dashboard');
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Login failed:', err);
+      // Error will be shown via useEffect above
     }
-
-    const formData = {
-      type: 'form_submission',
-      timestamp: Date.now(),
-      username: name,
-      email: email,
-      passwordLength: password.length,
-      fieldsCompleted: { name: !!name, email: !!email, password: !!password, confirm: !!confirm },
-    };
-    send(formData);
-
-    setToastMsg('Account created! 🎉');
-    setShowToast(true);
   };
 
   const handleFieldChange = (fieldName: string, value: string) => {
@@ -74,6 +105,10 @@ const LoginPage: React.FC = () => {
       length: value.length,
     };
     send(fieldData);
+  };
+
+  const handleSignupRedirect = () => {
+    history.push('/signup2');
   };
 
   return (
@@ -89,18 +124,18 @@ const LoginPage: React.FC = () => {
             </div>
             <div className="mb-4">
               <IonLabel className="mb-1 block text-sm font-medium text-gray-700">
-                Username
+                Username/Email
               </IonLabel>
               <IonInput
-                value={name}
+                value={username}
                 onIonInput={(e) => {
                   const newValue = e.detail.value ?? '';
-                  setName(newValue);
+                  setUsername(newValue);
                   handleFieldChange('username', newValue);
                   onInputChange('username')(e as CustomEvent<{ value: string }>);
                 }}
-                style = {{ color:'black' }}
-                placeholder="John Doe"
+                style={{ color: 'black' }}
+                placeholder="Enter username or email"
                 fill="outline"
                 className="h-11 rounded-md border-gray-300 bg-white px-3 text-[15px]"
               >
@@ -120,7 +155,7 @@ const LoginPage: React.FC = () => {
                   handleFieldChange('password', newValue);
                   onInputChange('password')(e as CustomEvent<{ value: string }>);
                 }}
-                style = {{ color:'black' }}
+                style={{ color: 'black' }}
                 placeholder="••••••••"
                 type="password"
                 fill="outline"
@@ -131,17 +166,21 @@ const LoginPage: React.FC = () => {
             </div>
 
             <button
-              className="w-full h-12 rounded-lg bg-blue-900 text-white font-semibold"
-              onClick={handleSignup}
+              className="w-full h-12 rounded-lg bg-blue-900 text-white font-semibold flex items-center justify-center"
+              onClick={handleLogin}
+              disabled={isLoading}
             >
-              Login
+              {isLoading ? <IonSpinner name="crescent" /> : 'Login'}
             </button>
 
             <p className="mt-6 text-center text-sm text-gray-600">
               New here?{' '}
-              <a href="#" className="font-medium text-blue-900 hover:underline">
-                Signup
-              </a>
+              <button 
+                onClick={handleSignupRedirect}
+                className="font-medium text-blue-900 hover:underline bg-none border-none cursor-pointer"
+              >
+                Sign Up
+              </button>
             </p>
           </div>
 
