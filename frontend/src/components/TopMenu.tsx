@@ -28,15 +28,6 @@ const TopMenu = () => {
         />
         <img src={banner} className=''/>
       </div>
-      
-      {/* Logout Button */}
-      <button
-        onClick={handleLogout}
-        className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-      >
-        <IonIcon icon={logOut} className="text-lg" />
-        <span className="text-sm font-medium">Logout</span>
-      </button>
     </div>
   )
 }

@@ -71,9 +71,9 @@ async def process_events():
             event = event_queue.popleft()
             event_type = event.get('type')
             event_data = event.get('data', {})
-            event_ts = event.get('timestamp', time.time() * 1000) / 1000  # Convert to seconds
+            event_ts = event.get('timestamp', time.time() * 1000) / 1000 
             client_ip = event.get('client_ip', 'unknown')
-            user_id = event_data.get('user_id', client_ip)  # Use client_ip if user_id not provided
+            user_id = event.get('user_id') 
 
             # Handle unexpected event types
             if event_type not in ['tap', 'swipe', 'device', 'typing', 'geolocation', 'ip']:
