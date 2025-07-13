@@ -32,6 +32,33 @@ FREQUENCY_THRESHOLD = 5  # Events per second for unusual frequency
 WPM_THRESHOLD_HIGH = 120  # WPM above which is considered unusual
 WPM_THRESHOLD_LOW = 10  # WPM below which is considered unusual
 
+# Load existing data from CSV files at startup
+def load_existing_data():
+    global tap_features, swipe_features, typing_features, geolocation_features, ip_features
+    try:
+        if os.path.exists('tap_features_data.csv'):
+            tap_df = pd.read_csv('tap_features_data.csv')
+            tap_features.extend(tap_df.to_dict('records'))
+            logger.info(f"Loaded {len(tap_features)} tap features from tap_features_data.csv")
+        if os.path.exists('swipe_features_data.csv'):
+            swipe_df = pd.read_csv('swipe_features_data.csv')
+            swipe_features.extend(swipe_df.to_dict('records'))
+            logger.info(f"Loaded {len(swipe_features)} swipe features from swipe_features_data.csv")
+        if os.path.exists('typing_features_data.csv'):
+            typing_df = pd.read_csv('typing_features_data.csv')
+            typing_features.extend(typing_df.to_dict('records'))
+            logger.info(f"Loaded {len(typing_features)} typing features from typing_features_data.csv")
+        if os.path.exists('geolocation_features_data.csv'):
+            geo_df = pd.read_csv('geolocation_features_data.csv')
+            geolocation_features.extend(geo_df.to_dict('records'))
+            logger.info(f"Loaded {len(geolocation_features)} geolocation features from geolocation_features_data.csv")
+        if os.path.exists('ip_features_data.csv'):
+            ip_df = pd.read_csv('ip_features_data.csv')
+            ip_features.extend(ip_df.to_dict('records'))
+            logger.info(f"Loaded {len(ip_features)} ip features from ip_features_data.csv")
+    except Exception as e:
+        logger.error(f"Error loading existing data: {e}")
+
 def haversine(lat1, lon1, lat2, lon2):
     """Calculate the great circle distance between two points on Earth (in km)."""
     R = 6371  # Earth radius in km
@@ -273,11 +300,12 @@ async def process_events():
                 logger.info(f"Tap at ({tap_x}, {tap_y}), region: {region}, "
                             f"SCREEN_WIDTH: {SCREEN_WIDTH}, distance_from_center: {distance_from_center:.2f}")
 
-                # Save tap features to CSV
-                tap_df = pd.DataFrame(tap_features)
+                # Save tap features to CSV (append mode)
+                tap_df = pd.DataFrame([features])  # Save only the new feature
                 tap_csv_path = os.path.abspath('tap_features_data.csv')
-                tap_df.to_csv(tap_csv_path, index=False)
-                logger.info(f"Saved {len(tap_features)} tap features to {tap_csv_path}")
+                header = not os.path.exists(tap_csv_path)  # Write header only if file doesn't exist
+                tap_df.to_csv(tap_csv_path, mode='a', header=header, index=False)
+                logger.info(f"Appended tap feature to {tap_csv_path}, total: {len(tap_features)}")
 
             elif event_type == 'swipe':
                 # Extract swipe features
@@ -376,11 +404,12 @@ async def process_events():
                 logger.info(f"Swipe from ({start_x}, {start_y}) to ({end_x}, {end_y}), "
                             f"start_region: {start_region}, end_region: {end_region}")
 
-                # Save swipe features to CSV
-                swipe_df = pd.DataFrame(swipe_features)
+                # Save swipe features to CSV (append mode)
+                swipe_df = pd.DataFrame([features])  # Save only the new feature
                 swipe_csv_path = os.path.abspath('swipe_features_data.csv')
-                swipe_df.to_csv(swipe_csv_path, index=False)
-                logger.info(f"Saved {len(swipe_features)} swipe features to {swipe_csv_path}")
+                header = not os.path.exists(swipe_csv_path)  # Write header only if file doesn't exist
+                swipe_df.to_csv(swipe_csv_path, mode='a', header=header, index=False)
+                logger.info(f"Appended swipe feature to {swipe_csv_path}, total: {len(swipe_features)}")
 
             elif event_type == 'typing':
                 # Extract typing features
@@ -430,11 +459,12 @@ async def process_events():
                 typing_features.append(features)
                 logger.info(f"Typing in field '{field}', length: {length}, wpm: {wpm}, duration: {duration}ms")
 
-                # Save typing features to CSV
-                typing_df = pd.DataFrame(typing_features)
+                # Save typing features to CSV (append mode)
+                typing_df = pd.DataFrame([features])  # Save only the new feature
                 typing_csv_path = os.path.abspath('typing_features_data.csv')
-                typing_df.to_csv(typing_csv_path, index=False)
-                logger.info(f"Saved {len(typing_features)} typing features to {typing_csv_path}")
+                header = not os.path.exists(typing_csv_path)  # Write header only if file doesn't exist
+                typing_df.to_csv(typing_csv_path, mode='a', header=header, index=False)
+                logger.info(f"Appended typing feature to {typing_csv_path}, total: {len(typing_features)}")
 
             elif event_type == 'geolocation':
                 latitude = event_data.get('latitude', 0)
@@ -501,10 +531,11 @@ async def process_events():
                     })
 
                 geolocation_features.append(geo_features)
-                geo_df = pd.DataFrame(geolocation_features)
+                geo_df = pd.DataFrame([geo_features])  # Save only the new feature
                 geo_csv_path = os.path.abspath('geolocation_features_data.csv')
-                geo_df.to_csv(geo_csv_path, index=False)
-                logger.info(f"Saved {len(geolocation_features)} geolocation features to {geo_csv_path}")
+                header = not os.path.exists(geo_csv_path)  # Write header only if file doesn't exist
+                geo_df.to_csv(geo_csv_path, mode='a', header=header, index=False)
+                logger.info(f"Appended geolocation feature to {geo_csv_path}, total: {len(geolocation_features)}")
 
             elif event_type == 'ip':
                 ip = event_data.get('ip', 'unknown')
@@ -536,10 +567,11 @@ async def process_events():
                     'ip_drift_rate_month': ip_drift_rate_month
                 }
                 ip_features.append(ip_features_dict)
-                ip_df = pd.DataFrame(ip_features)
+                ip_df = pd.DataFrame([ip_features_dict])  # Save only the new feature
                 ip_csv_path = os.path.abspath('ip_features_data.csv')
-                ip_df.to_csv(ip_csv_path, index=False)
-                logger.info(f"Saved {len(ip_features)} ip features to {ip_csv_path}")
+                header = not os.path.exists(ip_csv_path)  # Write header only if file doesn't exist
+                ip_df.to_csv(ip_csv_path, mode='a', header=header, index=False)
+                logger.info(f"Appended ip feature to {ip_csv_path}, total: {len(ip_features)}")
 
             # Update event time
             last_event_time[client_ip][event_type] = event_ts
@@ -569,6 +601,8 @@ async def handler(websocket):
         connected_clients.discard(websocket)
 
 async def main():
+    # Load existing data at startup
+    load_existing_data()
     ports_to_try = [8081, 8080, 8082, 8083, 8084]
     for port in ports_to_try:
         try:
@@ -596,29 +630,34 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logger.info('Server stopped by user')
         if tap_features:
-            tap_df = pd.DataFrame(tap_features)
+            tap_df = pd.DataFrame([f for f in tap_features if f not in tap_features[:len(tap_features)-len([f for f in tap_features if f['timestamp'] == tap_features[-1]['timestamp']])]])  # Save only new features
             tap_csv_path = os.path.abspath('tap_features_data.csv')
-            tap_df.to_csv(tap_csv_path, index=False)
-            logger.info(f"Saved {len(tap_features)} tap features to {tap_csv_path}")
+            header = not os.path.exists(tap_csv_path)
+            tap_df.to_csv(tap_csv_path, mode='a', header=header, index=False)
+            logger.info(f"Appended {len(tap_df)} tap features to {tap_csv_path}, total: {len(tap_features)}")
         if swipe_features:
-            swipe_df = pd.DataFrame(swipe_features)
+            swipe_df = pd.DataFrame([f for f in swipe_features if f not in swipe_features[:len(swipe_features)-len([f for f in swipe_features if f['timestamp'] == swipe_features[-1]['timestamp']])]])  # Save only new features
             swipe_csv_path = os.path.abspath('swipe_features_data.csv')
-            swipe_df.to_csv(swipe_csv_path, index=False)
-            logger.info(f"Saved {len(swipe_features)} swipe features to {swipe_csv_path}")
+            header = not os.path.exists(swipe_csv_path)
+            swipe_df.to_csv(swipe_csv_path, mode='a', header=header, index=False)
+            logger.info(f"Appended {len(swipe_df)} swipe features to {swipe_csv_path}, total: {len(swipe_features)}")
         if typing_features:
-            typing_df = pd.DataFrame(typing_features)
+            typing_df = pd.DataFrame([f for f in typing_features if f not in typing_features[:len(typing_features)-len([f for f in typing_features if f['timestamp'] == typing_features[-1]['timestamp']])]])  # Save only new features
             typing_csv_path = os.path.abspath('typing_features_data.csv')
-            typing_df.to_csv(typing_csv_path, index=False)
-            logger.info(f"Saved {len(typing_features)} typing features to {typing_csv_path}")
+            header = not os.path.exists(typing_csv_path)
+            typing_df.to_csv(typing_csv_path, mode='a', header=header, index=False)
+            logger.info(f"Appended {len(typing_df)} typing features to {typing_csv_path}, total: {len(typing_features)}")
         if geolocation_features:
-            geo_df = pd.DataFrame(geolocation_features)
+            geo_df = pd.DataFrame([f for f in geolocation_features if f not in geolocation_features[:len(geolocation_features)-len([f for f in geolocation_features if f['timestamp'] == geolocation_features[-1]['timestamp']])]])  # Save only new features
             geo_csv_path = os.path.abspath('geolocation_features_data.csv')
-            geo_df.to_csv(geo_csv_path, index=False)
-            logger.info(f"Saved {len(geolocation_features)} geolocation features to {geo_csv_path}")
+            header = not os.path.exists(geo_csv_path)
+            geo_df.to_csv(geo_csv_path, mode='a', header=header, index=False)
+            logger.info(f"Appended {len(geo_df)} geolocation features to {geo_csv_path}, total: {len(geolocation_features)}")
         if ip_features:
-            ip_df = pd.DataFrame(ip_features)
+            ip_df = pd.DataFrame([f for f in ip_features if f not in ip_features[:len(ip_features)-len([f for f in ip_features if f['timestamp'] == ip_features[-1]['timestamp']])]])  # Save only new features
             ip_csv_path = os.path.abspath('ip_features_data.csv')
-            ip_df.to_csv(ip_csv_path, index=False)
-            logger.info(f"Saved {len(ip_features)} ip features to {ip_csv_path}")
+            header = not os.path.exists(ip_csv_path)
+            ip_df.to_csv(ip_csv_path, mode='a', header=header, index=False)
+            logger.info(f"Appended {len(ip_df)} ip features to {ip_csv_path}, total: {len(ip_features)}")
     except Exception as e:
         logger.error(f'Server crashed: {e}')

@@ -49,6 +49,7 @@ import ProfilePage from './pages/ProfilePage';
 import OnboardingPage from './pages/OnboardingPage';
 import DrawerMenu from './components/DrawerMenu';
 import ErrorBoundary from './components/ErrorBoundary';
+import ScratchToRevealNumber from './pages/Captcha';
 
 setupIonicReact();
 
@@ -64,6 +65,10 @@ const App: React.FC = () => (
 
             <Route exact path="/login">
               <LoginPage />
+            </Route>
+
+            <Route exact path="/captcha">
+              <ScratchToRevealNumber/>
             </Route>
 
             <Route exact path="/signup2">

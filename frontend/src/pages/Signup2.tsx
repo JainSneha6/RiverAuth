@@ -25,7 +25,6 @@ interface IonContentElement extends HTMLElement {
 }
 
 const Signup2: React.FC = () => {
-  // Add loading state for better UX
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -50,13 +49,11 @@ const Signup2: React.FC = () => {
   const { pendingGeoData, pendingIpData } = useGeolocationTracking(send, isConnected);
   const { typingEvents, onInputChange, recordTypingEvent } = useTypingSpeedTracking(send, isConnected);
 
-  // Clear auth errors when component mounts
   useEffect(() => {
     clearError();
     console.log('Signup2 mounted - Auth state:', { isAuthenticated: !!signupStep1, error });
   }, [clearError]);
 
-  // Show authentication errors
   useEffect(() => {
     if (error) {
       console.error('Signup2 Auth Error:', error);
@@ -65,18 +62,14 @@ const Signup2: React.FC = () => {
     }
   }, [error]);
 
-  // Handle WebSocket connection issues gracefully
   useEffect(() => {
     if (wsError) {
       console.warn('WebSocket connection issue in Signup2:', wsError);
-      // Don't show WebSocket errors to users as they're not critical for signup
     }
   }, [wsError]);
 
-  // Handle initialization errors gracefully
   useEffect(() => {
     const timer = setTimeout(() => {
-      // If there are connection issues after 5 seconds, don't block the user
       if (wsError && !isConnected) {
         console.warn('WebSocket connection failed, continuing without real-time features');
       }
@@ -85,11 +78,9 @@ const Signup2: React.FC = () => {
     return () => clearTimeout(timer);
   }, [wsError, isConnected]);
 
-  // Handle page initialization
   useEffect(() => {
     const initPage = async () => {
       try {
-        // Give time for context to initialize
         await new Promise(resolve => setTimeout(resolve, 100));
         setIsPageLoading(false);
       } catch (error) {
@@ -151,7 +142,6 @@ const Signup2: React.FC = () => {
     try {
       clearError();
       
-      // Track form submission with behavioral data
       const submissionData = {
         type: 'signup_step1_submission',
         timestamp: Date.now(),
@@ -166,22 +156,19 @@ const Signup2: React.FC = () => {
       setToastMsg('Step 1 completed! 🎉');
       setShowToast(true);
       
-      // Navigate to step 2 after successful completion
       setTimeout(() => {
         history.push('/signup3');
       }, 1000);
       
     } catch (err) {
       console.error('Signup step 1 failed:', err);
-      // Error will be shown via useEffect above
     }
   };
 
-  // Simulate page loading for demo purposes
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsPageLoading(false);
-    }, 500); // Simulate a 500ms loading time
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -202,7 +189,6 @@ const Signup2: React.FC = () => {
     <Layout contentRef={contentRef} showTopMenu={false}>
       <div className="bg-white p-5 rounded-md shadow-md m-2 min-h-screen w-full flex flex-col">
         <div className="text-black text-3xl font-bold mb-4">Sign Up</div>
-        {/* Progress Bar - Step 1 of 3 */}
         <div className="flex flex-row gap-2 mb-10 w-full">
           <div className="flex-1 h-2 rounded bg-blue-600 border border-blue-600"></div>
           <div className="flex-1 h-2 rounded bg-white border border-blue-600"></div>
@@ -210,7 +196,6 @@ const Signup2: React.FC = () => {
         </div>
 
         <div className=" flex flex-col gap-4 justify-center">
-          {/* First Name */}
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
@@ -229,7 +214,6 @@ const Signup2: React.FC = () => {
                 style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
               />
             </div>
-            {/* Last Name */}
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
                 <User className="h-4 w-4" /> Last Name
@@ -249,7 +233,6 @@ const Signup2: React.FC = () => {
             </div>
           </div>
 
-          {/* Email */}
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
@@ -270,7 +253,6 @@ const Signup2: React.FC = () => {
             </div>
           </div>
 
-          {/* Phone */}
           <div className="flex w-full justify-center gap-1 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">

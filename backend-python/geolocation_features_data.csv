@@ -1,3 +1,4 @@
 timestamp,user_id,client_ip,latitude,longitude,altitude,accuracy,speed,geo_velocity_avg,geo_velocity_max,geo_velocity_var,distance_from_home_mean,distance_from_home_p90,radius_of_gyration
 1751908449.75,127.0.0.1,127.0.0.1,18.52043,73.8567433,,5,,0.0,0.0,0.0,0.0,0.0,0.0
 1751908459.728,127.0.0.1,127.0.0.1,18.52043,73.8567433,,5,,0.0,0.0,0.0,0.0,0.0,0.0
+1751908459.728,127.0.0.1,127.0.0.1,18.52043,73.8567433,,5,,0.0,0.0,0.0,0.0,0.0,0.0

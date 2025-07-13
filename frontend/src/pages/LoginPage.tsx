@@ -19,6 +19,7 @@ import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
 import { apiService } from '../services/api';
 import canaraLogo from '../../public/canara2.png'
+
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
   scrollToBottom(duration?: number): Promise<void>;
