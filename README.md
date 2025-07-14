@@ -1,5 +1,7 @@
 # RiverAuth - Behaviour Based Continuous Authentication System
 
+<img width="1525" height="856" alt="image" src="https://github.com/user-attachments/assets/d84946a0-e8f2-4780-98f1-b2f758817b99" />
+
 > A real-time, resource-efficient, and privacy-compliant solution for continuous mobile authentication using user behavior signals.
 
 ## Problem Statement
@@ -25,7 +27,9 @@ Implementing **Behaviour-Based Authentication (BBA)** that monitors real-time in
 
 ---
 
-## 🛠System Components
+## System Components
+
+<img width="1526" height="861" alt="image" src="https://github.com/user-attachments/assets/ff561c67-8174-479c-b400-21aa838278a7" />
 
 ### 1. Behaviour Capture Engine
 Captures a rich set of behavioral data:
@@ -36,9 +40,7 @@ Captures a rich set of behavioral data:
 - **Device metadata**
 
 ### 2. Real-Time Anomaly Detector
-- Detects deviation using:
-  - `KMeans + Mahalanobis Distance` for geo-behavior
-  - `HalfSpaceTrees` (a variant of Isolation Forest) for gestures and typing
+- Detects deviation after capturing data
 - Drift-aware & unsupervised: no labeled data needed
 
 ### 3. Adaptive Access Restriction
@@ -53,54 +55,181 @@ Captures a rich set of behavioral data:
 
 ---
 
-## Tech Stack
-
-| Component      | Tech                            |
-|----------------|----------------------------------|
-| Frontend       | Ionic + Capacitor                |
-| Backend        | Flask                            |
-| ML Engine      | [River ML](https://riverml.xyz/) (Online ML), KMeans, HalfSpaceTrees |
-| Database       | Azure Cosmos DB                  |
-| Data Processing| Pandas, NumPy, Matplotlib        |
-
----
-
 ## Data Capturing
 
-| Behavior       | Captured Features                            |
-|----------------|--------------------------------------------------|
-| Geolocation    | Geo-velocity, IP Drift Rate, Radius of Gyration |
-| Swipes         | Kinematics, Direction, Pressure, Rhythm         |
-| Tap Pressure   | Static/Dynamic Pressure, Timing                 |
-| Typing         | Dwell/Flight Time, Error Rates, Burst Patterns  |
-| Device Info    | OS Drift, Emulator Flags, Root Check            |
+<img width="1521" height="852" alt="image" src="https://github.com/user-attachments/assets/bd849fd5-61e9-4b64-a349-427e1e99ba9c" />
+
+<div align="center">
+
+<table>
+  <thead>
+    <tr>
+      <th>Behavior</th>
+      <th>Captured Features</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Geolocation</td>
+      <td>Geo-velocity, IP Drift Rate, Radius of Gyration</td>
+    </tr>
+    <tr>
+      <td>Swipes</td>
+      <td>Kinematics, Direction, Pressure, Rhythm</td>
+    </tr>
+    <tr>
+      <td>Tap Pressure</td>
+      <td>Static/Dynamic Pressure, Timing</td>
+    </tr>
+    <tr>
+      <td>Typing</td>
+      <td>Dwell/Flight Time, Error Rates, Burst Patterns</td>
+    </tr>
+    <tr>
+      <td>Device Info</td>
+      <td>OS Drift, Emulator Flags, Root Check</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
 
 ---
+
 ## Feature Engineering
 
-| Behavior       | Engineered Features                            |
-|----------------|--------------------------------------------------|
-| Geolocation    | Geo-velocity, IP Drift Rate, Distance from Home Base, Radius of Gyration |
-| Swipes         | Kinematics, Geometry, Temporal, Pressure, Rhythms & Pauses, Angle & Direction |
-| Tap Pressure   | Dwell Time, Flight Time, Error & Correction Rates, Typing Rhythms, Burst Patterns, Typing Speed |
-| Typing         | Device Consistency, OS Drift, Root/Emulator Flags, App Environment Integrity |
-| Device Info    | Static Pressure, Dynamic Pressure, Statistical Features, Temporal Features |
+<img width="1526" height="857" alt="image" src="https://github.com/user-attachments/assets/6759497b-a49b-47c3-9d39-f0dd97c53245" />
 
---
+<div align="center">
+
+<table>
+  <thead>
+    <tr>
+      <th>Behavior</th>
+      <th>Engineered Features</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Geolocation</td>
+      <td>Geo-velocity, IP Drift Rate, Distance from Home Base, Radius of Gyration</td>
+    </tr>
+    <tr>
+      <td>Swipes</td>
+      <td>Kinematics, Geometry, Temporal, Pressure, Rhythms & Pauses, Angle & Direction</td>
+    </tr>
+    <tr>
+      <td>Tap Pressure</td>
+      <td>Static Pressure, Dynamic Pressure, Statistical Features, Temporal Features</td>
+    </tr>
+    <tr>
+      <td>Typing</td>
+      <td>Dwell Time, Flight Time, Error & Correction Rates, Typing Rhythms, Burst Patterns, Typing Speed</td>
+    </tr>
+    <tr>
+      <td>Device Info</td>
+      <td>Device Consistency, OS Drift, Root/Emulator Flags, App Environment Integrity</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
+
+
+---
+
+## ML Models
+
+<img width="1523" height="852" alt="image" src="https://github.com/user-attachments/assets/b73c5879-5071-4e1d-8a18-7848d99a5a3a" />
+
+Detects deviation using:
+  - `KMeans + Mahalanobis Distance` for geo-behavior
+  - `HalfSpaceTrees` (a variant of Isolation Forest) for gestures and typing
+
+---
 
 ## Sample Use Case Scenarios
 
-| Score | Scenario | Outcome |
-|-------|----------|---------|
-| Low | Usual login and behavior | Full access granted |
-| Medium | Same device, strange gestures | OTP re-auth requested |
-| High | New location + erratic typing | Immediate logout |
+<img width="1527" height="856" alt="image" src="https://github.com/user-attachments/assets/c4da4421-d5e9-45d4-9735-e2a8a947b6b9" />
+
+<div align="center">
+
+<table>
+  <thead>
+    <tr>
+      <th>Score</th>
+      <th>Scenario</th>
+      <th>Outcome</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Low</td>
+      <td>Usual login and behavior</td>
+      <td>Full access granted</td>
+    </tr>
+    <tr>
+      <td>Medium</td>
+      <td>Same device, strange gestures</td>
+      <td>OTP re-auth requested</td>
+    </tr>
+    <tr>
+      <td>High</td>
+      <td>New location + erratic typing</td>
+      <td>Immediate logout</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
+
+
+---
+
+## Tech Stack
+
+<img width="1528" height="852" alt="image" src="https://github.com/user-attachments/assets/17868331-8706-4244-a3e2-577ae1b93ffd" />
+
+<div align="center">
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Tech</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Frontend</td>
+      <td>Ionic + Capacitor</td>
+    </tr>
+    <tr>
+      <td>Backend</td>
+      <td>Flask</td>
+    </tr>
+    <tr>
+      <td>ML Engine</td>
+      <td><a href="https://riverml.xyz/">River ML</a> (Online ML), KMeans, HalfSpaceTrees</td>
+    </tr>
+    <tr>
+      <td>Database</td>
+      <td>Azure Cosmos DB</td>
+    </tr>
+    <tr>
+      <td>Data Processing</td>
+      <td>Pandas, NumPy, Matplotlib</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
 
 ---
 
 ## System Architecture
 
-> [Architecture Diagram](https://drive.google.com/file/d/1f7HSYbqJGk_YecKTU20WP6-Q2Bhn6XGW/view?usp=sharing)
+[Architecture Diagram](https://drive.google.com/file/d/1f7HSYbqJGk_YecKTU20WP6-Q2Bhn6XGW/view?usp=sharing)
 
 ---
 
