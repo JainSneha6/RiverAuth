@@ -9,6 +9,19 @@ import time
 import os
 import numpy as np
 from scipy.stats import entropy
+import sys
+
+# Add model directory to path for real-time behavioral models
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'model'))
+
+# Import real-time behavioral model system
+try:
+    from realtime_integration import process_websocket_data, get_user_risk_assessment, add_security_alert_handler
+    BEHAVIORAL_MODELS_ENABLED = True
+    print("✅ Real-time behavioral models loaded successfully!")
+except ImportError as e:
+    print(f"⚠️  Behavioral models not available: {e}")
+    BEHAVIORAL_MODELS_ENABLED = False
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,6 +37,25 @@ last_event_time = {}  # Track last event time per client
 event_counts = {}  # Track event counts per client
 session_stats = {}  # Track session-based stats
 user_stats = {}  # Track user-specific stats
+
+# Security alert handler for behavioral anomalies
+def behavioral_security_alert_handler(user_id, alerts, model_results):
+    """Handle security alerts from behavioral models"""
+    for alert in alerts:
+        severity_emoji = "🚨" if alert['severity'] == 'high' else "⚠️"
+        logger.warning(f"{severity_emoji} BEHAVIORAL ALERT - User {user_id}: {alert['message']} (Score: {alert['score']:.3f})")
+        
+        # For high-severity alerts, you could add additional actions:
+        if alert['severity'] == 'high':
+            logger.critical(f"🔴 HIGH RISK BEHAVIOR DETECTED: User {user_id} - Model: {alert['model']}")
+            # Could add: send_security_notification, force_logout, etc.
+
+# Register behavioral alert handler if models are available
+if BEHAVIORAL_MODELS_ENABLED:
+    add_security_alert_handler(behavioral_security_alert_handler)
+    logger.info("🛡️  Behavioral security monitoring enabled")
+else:
+    logger.warning("⚠️  Running without behavioral model protection")
 EDGE_THRESHOLD = 50  # Pixels from edge to consider "near edge"
 FREQUENCY_WINDOW = 5  # Seconds for frequency calculation
 SCREEN_WIDTH = 1920  # Default, updated by device message
@@ -300,6 +332,33 @@ async def process_events():
                 logger.info(f"Tap at ({tap_x}, {tap_y}), region: {region}, "
                             f"SCREEN_WIDTH: {SCREEN_WIDTH}, distance_from_center: {distance_from_center:.2f}")
 
+                # 🔥 REAL-TIME BEHAVIORAL MODEL UPDATE
+                if BEHAVIORAL_MODELS_ENABLED and user_id:
+                    try:
+                        # Prepare data for behavioral model
+                        behavioral_data = {
+                            'user_id': user_id,
+                            'type': 'tap',
+                            'tap_event_rate': features.get('tap_event_rate', 0),
+                            'tap_pressure': features.get('tap_pressure', 0.5),
+                            'normalized_x': tap_x / SCREEN_WIDTH if SCREEN_WIDTH > 0 else 0.5,
+                            'normalized_y': tap_y / SCREEN_HEIGHT if SCREEN_HEIGHT > 0 else 0.5,
+                            'timestamp': event_ts
+                        }
+                        
+                        # Process through user-specific behavioral models
+                        model_result = process_websocket_data(behavioral_data)
+                        
+                        if model_result and not model_result.get('error'):
+                            logger.info(f"🧠 User {user_id} tap model updated - Score: {model_result['model_results']['tap']['anomaly_score']:.3f}")
+                            
+                            # Handle any security alerts
+                            if model_result.get('alerts'):
+                                logger.warning(f"🚨 {len(model_result['alerts'])} tap security alerts for user {user_id}")
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Error in tap behavioral model processing: {e}")
+
                 # Save tap features to CSV (append mode)
                 tap_df = pd.DataFrame([features])  # Save only the new feature
                 tap_csv_path = os.path.abspath('tap_features_data.csv')
@@ -404,6 +463,36 @@ async def process_events():
                 logger.info(f"Swipe from ({start_x}, {start_y}) to ({end_x}, {end_y}), "
                             f"start_region: {start_region}, end_region: {end_region}")
 
+                # 🔥 REAL-TIME BEHAVIORAL MODEL UPDATE
+                if BEHAVIORAL_MODELS_ENABLED and user_id:
+                    try:
+                        # Calculate direction entropy for behavioral model
+                        directions = [features.get('direction', 0)]
+                        direction_entropy = entropy([1], base=2) if len(directions) == 1 else entropy(directions, base=2)
+                        
+                        # Prepare data for behavioral model
+                        behavioral_data = {
+                            'user_id': user_id,
+                            'type': 'swipe',
+                            'swipe_event_rate': features.get('swipe_event_rate', 0),
+                            'avg_user_swipe_speed': features.get('speed', 0),
+                            'swipe_direction_entropy': direction_entropy,
+                            'timestamp': event_ts
+                        }
+                        
+                        # Process through user-specific behavioral models
+                        model_result = process_websocket_data(behavioral_data)
+                        
+                        if model_result and not model_result.get('error'):
+                            logger.info(f"🧠 User {user_id} swipe model updated - Score: {model_result['model_results']['swipe']['anomaly_score']:.3f}")
+                            
+                            # Handle any security alerts
+                            if model_result.get('alerts'):
+                                logger.warning(f"🚨 {len(model_result['alerts'])} swipe security alerts for user {user_id}")
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Error in swipe behavioral model processing: {e}")
+
                 # Save swipe features to CSV (append mode)
                 swipe_df = pd.DataFrame([features])  # Save only the new feature
                 swipe_csv_path = os.path.abspath('swipe_features_data.csv')
@@ -458,6 +547,32 @@ async def process_events():
                 # Store typing features
                 typing_features.append(features)
                 logger.info(f"Typing in field '{field}', length: {length}, wpm: {wpm}, duration: {duration}ms")
+
+                # 🔥 REAL-TIME BEHAVIORAL MODEL UPDATE
+                if BEHAVIORAL_MODELS_ENABLED and user_id:
+                    try:
+                        # Prepare data for behavioral model
+                        behavioral_data = {
+                            'user_id': user_id,
+                            'type': 'typing',
+                            'typing_event_rate': features.get('typing_event_rate', 0),
+                            'avg_user_typing_wpm': wpm,
+                            'typing_duration': duration,
+                            'timestamp': event_ts
+                        }
+                        
+                        # Process through user-specific behavioral models
+                        model_result = process_websocket_data(behavioral_data)
+                        
+                        if model_result and not model_result.get('error'):
+                            logger.info(f"🧠 User {user_id} typing model updated - Score: {model_result['model_results']['typing']['anomaly_score']:.3f}")
+                            
+                            # Handle any security alerts
+                            if model_result.get('alerts'):
+                                logger.warning(f"🚨 {len(model_result['alerts'])} typing security alerts for user {user_id}")
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Error in typing behavioral model processing: {e}")
 
                 # Save typing features to CSV (append mode)
                 typing_df = pd.DataFrame([features])  # Save only the new feature

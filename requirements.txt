@@ -1,0 +1,34 @@
+# Core Dependencies for River-Auth Behavioral Biometrics System
+
+# Online Machine Learning Framework
+river==0.22.0
+
+# Data Processing and Analysis
+numpy>=1.23.0
+pandas>=2.2.3
+scipy>=1.14.1
+
+# Date and Time Utilities
+python-dateutil>=2.8.2
+pytz>=2020.1
+tzdata>=2022.7
+
+# Web Framework (if not already installed)
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# WebSocket Support
+websockets>=11.0.0
+
+# Authentication (if using JWT)
+pyjwt>=2.8.0
+
+# Database (if using SQLAlchemy)
+sqlalchemy>=2.0.0
+
+# Optional: For data visualization and analysis
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Optional: For advanced feature extraction
+scikit-learn>=1.3.0

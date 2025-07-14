@@ -1,2 +1,13 @@
 node_modules
 .env
+
+# Behavioral biometrics model files
+model/user_models/
+model/user_metadata/
+*.pkl
+*.csv
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
