@@ -89,11 +89,11 @@ const Signup4: React.FC = () => {
     if (!isAuthenticated || !user || user.signup_step < 2 || !user.is_complete) {
       console.log('Signup4 redirecting - missing auth or incomplete previous steps');
       if (!isAuthenticated || !user) {
-        history.push('/signup2');
+        //history.push('/signup2');
       } else if (user.signup_step < 1) {
-        history.push('/signup2');
+        //history.push('/signup2');
       } else if (user.signup_step < 2 || !user.is_complete) {
-        history.push('/signup3');
+        //history.push('/signup3');
       }
     }
   }, [isAuthenticated, user, history]);

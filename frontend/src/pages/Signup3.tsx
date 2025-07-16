@@ -61,7 +61,7 @@ const Signup3: React.FC = () => {
     console.log('Signup3 mounted - Auth state:', { isAuthenticated, user, signup_step: user?.signup_step });
     if (!isAuthenticated || !user || user.signup_step < 1) {
       console.log('Signup3 redirecting to signup2 - missing auth or incomplete step 1');
-      history.push('/signup2');
+      //history.push('/signup2');
     }
   }, [isAuthenticated, user, history]);
 

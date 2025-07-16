@@ -195,13 +195,14 @@ const Signup2: React.FC = () => {
           <div className="flex-1 h-2 rounded bg-white border border-blue-600"></div>
         </div>
 
-        <div className=" flex flex-col gap-4 justify-center">
-          <div className="flex w-full justify-center gap-1 my-2">
+        <div className=" flex flex-col gap-4 justify-center border">
+          <div className="flex flex-col w-full justify-center gap-4 my-2">
             <div className="w-full">
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
                 <User className="h-4 w-4" /> First Name
               </label>
               <input
+                className="w-full"
                 value={formData.firstName}
                 onChange={e => {
                   handleChange('firstName', e.target.value);
@@ -211,7 +212,13 @@ const Signup2: React.FC = () => {
                   onInputChange('firstName')(customEvent);
                 }}
                 placeholder="First Name"
-                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{
+                  color: 'black',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  padding: '0.5rem'
+                }}
               />
             </div>
             <div className="w-full">
@@ -219,6 +226,7 @@ const Signup2: React.FC = () => {
                 <User className="h-4 w-4" /> Last Name
               </label>
               <input
+                className="w-full"
                 value={formData.lastName}
                 onChange={e => {
                   handleChange('lastName', e.target.value);
@@ -228,7 +236,13 @@ const Signup2: React.FC = () => {
                   onInputChange('lastName')(customEvent);
                 }}
                 placeholder="Last Name"
-                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
+                style={{
+                  color: 'black',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  padding: '0.5rem'
+                }}
               />
             </div>
           </div>
