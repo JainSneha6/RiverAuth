@@ -10,6 +10,35 @@ import os
 import numpy as np
 from scipy.stats import entropy
 import sys
+import pymssql
+from dotenv import load_dotenv
+from werkzeug.security import check_password_hash
+
+# Load environment variables
+load_dotenv()
+
+# Azure SQL setup
+server = os.getenv('AZURE_SQL_SERVER')
+database = os.getenv('AZURE_SQL_DATABASE')
+username = os.getenv('AZURE_SQL_USERNAME')
+password = os.getenv('AZURE_SQL_PASSWORD')
+
+def get_db_connection():
+    """Get a fresh database connection"""
+    try:
+        conn = pymssql.connect(
+            server=server,
+            user=username,
+            password=password,
+            database=database,
+            timeout=30,
+            login_timeout=10,
+            as_dict=False
+        )
+        return conn
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        return None
 
 # Add model directory to path for real-time behavioral models
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'model'))
@@ -38,17 +67,228 @@ event_counts = {}  # Track event counts per client
 session_stats = {}  # Track session-based stats
 user_stats = {}  # Track user-specific stats
 
+def get_user_security_questions(user_id):
+    """Get user security questions from database"""
+    conn = get_db_connection()
+    if not conn:
+        logger.warning(f"Database connection failed, using fallback questions for user {user_id}")
+        return [
+            {'id': 1, 'question': 'What is your favorite color?', 'type': 'text'},
+            {'id': 2, 'question': 'What city were you born in?', 'type': 'text'},
+            {'id': 3, 'question': 'What is your favorite food?', 'type': 'text'}
+        ]
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT question, question_index 
+            FROM user_security_questions 
+            WHERE user_id = %s 
+            ORDER BY question_index
+        """, (user_id,))
+        
+        rows = cursor.fetchall()
+        questions = [{'id': row[1], 'question': row[0], 'type': 'text'} for row in rows]
+        
+        logger.info(f"🔐 Loaded {len(questions)} security questions for user {user_id}")
+        
+        # If no questions found in database, use fallback
+        if not questions:
+            logger.warning(f"No security questions found in database for user {user_id}, using fallback")
+            return [
+                {'id': 1, 'question': 'What is your favorite color?', 'type': 'text'},
+                {'id': 2, 'question': 'What city were you born in?', 'type': 'text'},
+                {'id': 3, 'question': 'What is your favorite food?', 'type': 'text'}
+            ]
+        
+        return questions
+        
+    except Exception as e:
+        logger.error(f"Error loading security questions for user {user_id}: {e}")
+        logger.warning(f"Using fallback questions for user {user_id}")
+        return [
+            {'id': 1, 'question': 'What is your favorite color?', 'type': 'text'},
+            {'id': 2, 'question': 'What city were you born in?', 'type': 'text'},
+            {'id': 3, 'question': 'What is your favorite food?', 'type': 'text'}
+        ]
+    finally:
+        conn.close()
+
+def verify_security_answers(user_id, answers):
+    """Verify security answers against database"""
+    conn = get_db_connection()
+    if not conn:
+        logger.warning(f"Database connection failed, using fallback verification for user {user_id}")
+        # Fallback verification - accept any reasonable answers
+        return verify_fallback_answers(answers)
+    
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT question_index, answer_hash 
+            FROM user_security_questions 
+            WHERE user_id = %s 
+            ORDER BY question_index
+        """, (user_id,))
+        
+        stored_answers = cursor.fetchall()
+        
+        if not stored_answers:
+            logger.error(f"No security questions found for user {user_id}, using fallback verification")
+            return verify_fallback_answers(answers)
+        
+        correct_count = 0
+        for answer in answers:
+            question_id = answer.get('question_id')
+            user_answer = answer.get('answer', '').lower().strip()
+            
+            # Find the stored answer hash for this question
+            stored_hash = None
+            for stored_index, stored_hash_value in stored_answers:
+                if stored_index == question_id:
+                    stored_hash = stored_hash_value
+                    break
+            
+            if stored_hash and check_password_hash(stored_hash, user_answer):
+                correct_count += 1
+                logger.info(f"✅ Question {question_id} answered correctly by user {user_id}")
+            else:
+                logger.warning(f"❌ Question {question_id} answered incorrectly by user {user_id}")
+        
+        # Require at least 2 out of 3 correct answers (or 3 out of 5 if more questions)
+        total_questions = len(stored_answers)
+        required_correct = max(2, total_questions // 2 + 1)
+        is_verified = correct_count >= required_correct
+        
+        logger.info(f"🔐 User {user_id} security verification: {correct_count}/{total_questions} correct, required: {required_correct}, verified: {is_verified}")
+        return is_verified, correct_count
+        
+    except Exception as e:
+        logger.error(f"Error verifying security answers for user {user_id}: {e}")
+        return verify_fallback_answers(answers)
+    finally:
+        conn.close()
+
+def verify_fallback_answers(answers):
+    """Fallback verification when database is unavailable"""
+    # For demo purposes, accept any non-empty answers
+    valid_answers = 0
+    for answer in answers:
+        user_answer = answer.get('answer', '').strip()
+        if user_answer and len(user_answer) > 1:
+            valid_answers += 1
+    
+    # Accept if at least 2 out of 3 questions have reasonable answers
+    is_verified = valid_answers >= 2
+    logger.info(f"🔐 Fallback verification: {valid_answers}/3 valid answers, verified: {is_verified}")
+    return is_verified, valid_answers
+
 # Security alert handler for behavioral anomalies
 def behavioral_security_alert_handler(user_id, alerts, model_results):
-    """Handle security alerts from behavioral models"""
+    """Handle security alerts from behavioral models with automatic actions"""
     for alert in alerts:
-        severity_emoji = "🚨" if alert['severity'] == 'high' else "⚠️"
-        logger.warning(f"{severity_emoji} BEHAVIORAL ALERT - User {user_id}: {alert['message']} (Score: {alert['score']:.3f})")
+        severity = alert['severity']
+        score = alert['score']
+        model_type = alert['model']
         
-        # For high-severity alerts, you could add additional actions:
-        if alert['severity'] == 'high':
-            logger.critical(f"🔴 HIGH RISK BEHAVIOR DETECTED: User {user_id} - Model: {alert['model']}")
-            # Could add: send_security_notification, force_logout, etc.
+        severity_emoji = "🚨" if severity == 'high' else "⚠️"
+        logger.warning(f"{severity_emoji} BEHAVIORAL ALERT - User {user_id}: {alert['message']} (Score: {score:.3f})")
+        
+        # Determine action based on risk level
+        if severity == 'high' and score > 0.95:  # Increased threshold for less frequent logout
+            # HIGH RISK: Automatic logout
+            action = "force_logout"
+            alert_message = {
+                "type": "behavioral_alert",
+                "user_id": user_id,
+                "score": score,
+                "model": model_type,
+                "severity": severity,
+                "action": action,
+                "message": "⚠️ Suspicious activity detected. You have been logged out for security reasons.",
+                "title": "Security Alert",
+                "timestamp": time.time() * 1000,
+                "threshold": alert.get('threshold', 0.8)
+            }
+            logger.critical(f"🔴 HIGH RISK BEHAVIOR DETECTED: User {user_id} - Model: {model_type} - FORCE LOGOUT")
+            
+        elif severity == 'medium' or (0.8 < score <= 0.95):  # Updated range to match model.py
+            # MEDIUM RISK: Security questions
+            action = "security_challenge"
+            
+            # Load security questions from database
+            security_questions = get_user_security_questions(user_id)
+            
+            if not security_questions:
+                # If no security questions found, fall back to force logout
+                logger.error(f"No security questions found for user {user_id}, forcing logout")
+                action = "force_logout"
+                alert_message = {
+                    "type": "behavioral_alert",
+                    "user_id": user_id,
+                    "score": score,
+                    "model": model_type,
+                    "severity": "high",
+                    "action": action,
+                    "message": "⚠️ Suspicious activity detected. No security questions available. You have been logged out for security reasons.",
+                    "title": "Security Alert",
+                    "timestamp": time.time() * 1000,
+                    "threshold": alert.get('threshold', 0.8)
+                }
+                logger.critical(f"🔴 NO SECURITY QUESTIONS - User {user_id} - FORCE LOGOUT")
+            else:
+                alert_message = {
+                    "type": "behavioral_alert",
+                    "user_id": user_id,
+                    "score": score,
+                    "model": model_type,
+                    "severity": "medium",
+                    "action": action,
+                    "message": "We've detected unusual activity. Please answer your security questions to continue.",
+                    "title": "Security Verification",
+                    "timestamp": time.time() * 1000,
+                    "threshold": alert.get('threshold', 0.8),
+                    "security_questions": security_questions
+                }
+                logger.warning(f"⚠️ MEDIUM RISK BEHAVIOR DETECTED: User {user_id} - Model: {model_type} - SECURITY CHALLENGE - {len(security_questions)} questions loaded")
+            
+        else:
+            # LOW RISK: Normal monitoring
+            action = "monitor"
+            alert_message = {
+                "type": "behavioral_alert",
+                "user_id": user_id,
+                "score": score,
+                "model": model_type,
+                "severity": "low",
+                "action": action,
+                "message": f"Monitoring unusual {model_type} behavior",
+                "title": "Security Monitoring",
+                "timestamp": time.time() * 1000,
+                "threshold": alert.get('threshold', 0.8)  # Updated threshold
+            }
+            logger.info(f"ℹ️ LOW RISK BEHAVIOR DETECTED: User {user_id} - Model: {model_type} - MONITORING")
+        
+        # Send alert to all connected clients (in a real app, you'd filter by user_id)
+        asyncio.create_task(broadcast_security_alert(alert_message))
+
+async def broadcast_security_alert(alert_message):
+    """Broadcast security alert to all connected clients"""
+    global connected_clients
+    if connected_clients:
+        disconnected_clients = set()
+        for client in connected_clients.copy():
+            try:
+                await client.send(json.dumps(alert_message))
+                logger.info(f"Security alert sent to client: {alert_message['severity']} risk detected")
+            except websockets.exceptions.ConnectionClosed:
+                disconnected_clients.add(client)
+            except Exception as e:
+                logger.error(f"Error sending security alert: {e}")
+                disconnected_clients.add(client)
+        
+        # Clean up disconnected clients
+        connected_clients -= disconnected_clients
 
 # Register behavioral alert handler if models are available
 if BEHAVIORAL_MODELS_ENABLED:
@@ -135,8 +375,13 @@ async def process_events():
             user_id = event.get('user_id') 
 
             # Handle unexpected event types
-            if event_type not in ['tap', 'swipe', 'device', 'typing', 'geolocation', 'ip']:
+            if event_type not in ['tap', 'swipe', 'device', 'typing', 'geolocation', 'ip', 'test_alert']:
                 logger.warning(f"Unknown event type: {event_type}, skipping")
+                continue
+
+            # Handle test alerts
+            if event_type == 'test_alert':
+                logger.info(f"🧪 Test alert received from user {user_id}")
                 continue
 
             # Handle device message to update screen dimensions
@@ -335,14 +580,20 @@ async def process_events():
                 # 🔥 REAL-TIME BEHAVIORAL MODEL UPDATE
                 if BEHAVIORAL_MODELS_ENABLED and user_id:
                     try:
-                        # Prepare data for behavioral model
+                        # Prepare data for behavioral model with all required features
                         behavioral_data = {
                             'user_id': user_id,
                             'type': 'tap',
                             'tap_event_rate': features.get('tap_event_rate', 0),
+                            'inter_tap_variability': features.get('inter_tap_variability', 0),
+                            'avg_user_tap_duration': features.get('avg_user_tap_duration', 0),
+                            'tap_region_entropy': features.get('tap_region_entropy', 0),
                             'tap_pressure': features.get('tap_pressure', 0.5),
-                            'normalized_x': tap_x / SCREEN_WIDTH if SCREEN_WIDTH > 0 else 0.5,
-                            'normalized_y': tap_y / SCREEN_HEIGHT if SCREEN_HEIGHT > 0 else 0.5,
+                            'distance_from_user_mean': features.get('distance_from_user_mean', 0),
+                            'normalized_x': normalized_x,
+                            'normalized_y': normalized_y,
+                            'is_near_edge': is_near_edge,
+                            'tap_pressure_deviation': features.get('tap_pressure_deviation', 0),
                             'timestamp': event_ts
                         }
                         
@@ -466,17 +717,19 @@ async def process_events():
                 # 🔥 REAL-TIME BEHAVIORAL MODEL UPDATE
                 if BEHAVIORAL_MODELS_ENABLED and user_id:
                     try:
-                        # Calculate direction entropy for behavioral model
-                        directions = [features.get('direction', 0)]
-                        direction_entropy = entropy([1], base=2) if len(directions) == 1 else entropy(directions, base=2)
-                        
-                        # Prepare data for behavioral model
+                        # Prepare data for behavioral model with all required features
                         behavioral_data = {
                             'user_id': user_id,
                             'type': 'swipe',
                             'swipe_event_rate': features.get('swipe_event_rate', 0),
-                            'avg_user_swipe_speed': features.get('speed', 0),
-                            'swipe_direction_entropy': direction_entropy,
+                            'inter_swipe_variability': features.get('inter_swipe_variability', 0),
+                            'avg_user_swipe_speed': features.get('avg_user_swipe_speed', 0),
+                            'avg_user_swipe_distance': features.get('avg_user_swipe_distance', 0),
+                            'swipe_direction_entropy': features.get('swipe_direction_entropy', 0),
+                            'swipe_direction_consistency': features.get('swipe_direction_consistency', 0),
+                            'distance': distance,
+                            'duration': duration,
+                            'angle': angle,
                             'timestamp': event_ts
                         }
                         
@@ -551,13 +804,19 @@ async def process_events():
                 # 🔥 REAL-TIME BEHAVIORAL MODEL UPDATE
                 if BEHAVIORAL_MODELS_ENABLED and user_id:
                     try:
-                        # Prepare data for behavioral model
+                        # Prepare data for behavioral model with all required features
                         behavioral_data = {
                             'user_id': user_id,
                             'type': 'typing',
                             'typing_event_rate': features.get('typing_event_rate', 0),
-                            'avg_user_typing_wpm': wpm,
-                            'typing_duration': duration,
+                            'inter_typing_variability': features.get('inter_typing_variability', 0),
+                            'avg_user_typing_wpm': features.get('avg_user_typing_wpm', 0),
+                            'avg_user_typing_duration': features.get('avg_user_typing_duration', 0),
+                            'avg_user_typing_length': features.get('avg_user_typing_length', 0),
+                            'characters_per_second': characters_per_second,
+                            'wpm_deviation': features.get('wpm_deviation', 0),
+                            'duration_deviation': features.get('duration_deviation', 0),
+                            'length_deviation': features.get('length_deviation', 0),
                             'timestamp': event_ts
                         }
                         
@@ -707,13 +966,71 @@ async def handler(websocket):
             try:
                 data = json.loads(message)
                 data['client_ip'] = client_ip
-                event_queue.append(data)
+                
+                # Handle security question responses
+                if data.get('type') == 'security_response':
+                    await handle_security_response(websocket, data)
+                # Handle test security alerts from dashboard
+                elif data.get('type') == 'test_alert' and 'behavioral_alert' in data:
+                    alert_data = data['behavioral_alert']
+                    logger.info(f"🧪 Processing test security alert: {alert_data.get('severity', 'unknown')} risk")
+                    
+                    # Send the alert back to all connected clients
+                    await broadcast_security_alert(alert_data)
+                else:
+                    # Normal event processing
+                    event_queue.append(data)
+                    
             except json.JSONDecodeError:
                 logger.error("Received non-JSON message")
     except websockets.exceptions.ConnectionClosed:
         logger.info(f'Client disconnected: {client_ip}')
     finally:
         connected_clients.discard(websocket)
+
+async def handle_security_response(websocket, data):
+    """Handle security question responses"""
+    user_id = data.get('user_id')
+    answers = data.get('answers', [])
+    
+    logger.info(f"🔐 Security response received from user {user_id} with {len(answers)} answers")
+    
+    # Verify answers against database
+    is_verified, correct_count = verify_security_answers(user_id, answers)
+    
+    # Determine action based on verification result
+    if is_verified:
+        # Allow user to continue
+        response = {
+            "type": "security_response_result",
+            "user_id": user_id,
+            "success": True,
+            "action": "continue",
+            "message": "Security verification successful. You may continue.",
+            "title": "Verification Complete",
+            "timestamp": time.time() * 1000
+        }
+        logger.info(f"✅ User {user_id} passed security verification ({correct_count} correct answers)")
+        
+    else:
+        # Logout user due to failed verification
+        response = {
+            "type": "security_response_result",
+            "user_id": user_id,
+            "success": False,
+            "action": "force_logout",
+            "message": "Security verification failed. You have been logged out for security reasons.",
+            "title": "Verification Failed",
+            "timestamp": time.time() * 1000
+        }
+        logger.critical(f"🔴 User {user_id} failed security verification ({correct_count} correct answers) - FORCE LOGOUT")
+    
+    # Send response to the specific client
+    try:
+        await websocket.send(json.dumps(response))
+        logger.info(f"📤 Security response sent to user {user_id}: {response['action']}")
+    except Exception as e:
+        logger.error(f"Error sending security response to user {user_id}: {e}")
 
 async def main():
     # Load existing data at startup

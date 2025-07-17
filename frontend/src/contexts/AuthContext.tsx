@@ -7,6 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  forceLogout: (reason?: string) => Promise<void>;
   signupStep1: (data: any) => Promise<void>;
   signupStep2: (data: any) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -62,6 +63,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
     } catch (err) {
       console.error('Logout error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const forceLogout = async (reason?: string) => {
+    try {
+      setIsLoading(true);
+      
+      // Store logout reason for display
+      if (reason) {
+        localStorage.setItem('forced_logout_reason', reason);
+      }
+      
+      // Clear session without calling backend (in case of security threat)
+      apiService.clearUserSession();
+      setUser(null);
+      
+      console.log(`Force logout executed${reason ? ': ' + reason : ''}`);
+    } catch (err) {
+      console.error('Force logout error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -149,6 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
+    forceLogout,
     signupStep1,
     signupStep2,
     refreshUser,

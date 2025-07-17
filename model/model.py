@@ -4,8 +4,15 @@ from river.anomaly import HalfSpaceTrees
 from scipy.spatial.distance import mahalanobis
 import logging
 
+# Behavioral risk thresholds
+RISK_THRESHOLDS = {
+    "HIGH_RISK": 0.95,    # Force logout (increased to reduce easy logout)
+    "MEDIUM_RISK": 0.8,   # Security questions challenge (decreased to ask questions more often)
+    "LOW_RISK": 0.3       # Normal operation
+}
+
 # Reduced warmup threshold for faster meaningful scores
-WARMUP_THRESHOLD = 10
+WARMUP_THRESHOLD = 30
 user_warmup_counts = defaultdict(int)
 user_sample_counts = defaultdict(int)  # Track total samples per user
 

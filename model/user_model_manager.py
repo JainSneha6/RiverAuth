@@ -8,6 +8,98 @@ import numpy as np
 from river.anomaly import HalfSpaceTrees
 from river.preprocessing import StandardScaler
 from river.compose import Pipeline
+from river.anomaly.base import AnomalyDetector
+import numpy as np
+import math
+
+class ContinuousHalfSpaceTrees(AnomalyDetector):
+    """
+    A wrapper around HalfSpaceTrees that provides continuous anomaly scores
+    instead of binary 0/1 values by using statistical methods
+    """
+    def __init__(self, n_trees=25, height=4, window_size=50, seed=42):
+        self.n_trees = n_trees
+        self.height = height
+        self.window_size = window_size
+        self.seed = seed
+        self.model = HalfSpaceTrees(
+            n_trees=n_trees,
+            height=height, 
+            window_size=window_size,
+            seed=seed
+        )
+        self.feature_history = []
+        self.anomaly_history = []
+        self.score_history = []
+        
+    def learn_one(self, x):
+        """Learn from a single observation"""
+        self.model.learn_one(x)
+        
+        # Store feature values for statistical analysis
+        feature_values = list(x.values())
+        self.feature_history.append(feature_values)
+        
+        # Keep only recent history (sliding window)
+        if len(self.feature_history) > self.window_size:
+            self.feature_history.pop(0)
+            
+        return self
+    
+    def score_one(self, x):
+        """Calculate continuous anomaly score"""
+        # Get binary anomaly score from HalfSpaceTrees
+        binary_score = self.model.score_one(x)
+        
+        # If we don't have enough history, return the binary score
+        if len(self.feature_history) < 10:
+            return float(binary_score)
+            
+        # Calculate statistical deviation score
+        feature_values = list(x.values())
+        
+        try:
+            # Calculate how much this point deviates from historical mean
+            historical_array = np.array(self.feature_history)
+            historical_means = np.mean(historical_array, axis=0)
+            historical_stds = np.std(historical_array, axis=0)
+            
+            # Calculate z-scores for each feature
+            z_scores = []
+            for i, (current_val, mean_val, std_val) in enumerate(zip(feature_values, historical_means, historical_stds)):
+                if std_val > 0:
+                    z_score = abs(current_val - mean_val) / std_val
+                    z_scores.append(z_score)
+                else:
+                    z_scores.append(0.0)
+            
+            # Calculate composite anomaly score
+            if z_scores:
+                # Use the maximum z-score as the anomaly indicator
+                max_z_score = max(z_scores)
+                
+                # Convert z-score to probability-like score (0-1 range)
+                # Using sigmoid transformation: 1 / (1 + e^(-k*(z-threshold)))
+                threshold = 1.0  # Z-score threshold for anomaly
+                k = 1.0  # Steepness parameter
+                
+                continuous_score = 1.0 / (1.0 + math.exp(-k * (max_z_score - threshold)))
+                
+                # Combine with binary score (give more weight to statistical method)
+                final_score = 0.7 * continuous_score + 0.3 * binary_score
+                
+                # Store for debugging
+                self.score_history.append(final_score)
+                if len(self.score_history) > 100:
+                    self.score_history.pop(0)
+                
+                return final_score
+            else:
+                return float(binary_score)
+                
+        except Exception as e:
+            # Fallback to binary score if statistical calculation fails
+            return float(binary_score)
 from scipy.stats import entropy
 from scipy.spatial.distance import mahalanobis
 import logging
@@ -31,6 +123,10 @@ class UserBehaviorModelManager:
             "swipe": {"samples": 0, "last_updated": None, "anomaly_scores": []}
         })
         
+        # Load existing metadata and initialize from CSV data
+        self.load_metadata()
+        self.initialize_from_csv_data()
+        
         # Model configurations
         self.model_config = {
             "typing": {
@@ -39,7 +135,7 @@ class UserBehaviorModelManager:
                     "avg_user_typing_duration", "avg_user_typing_length", "characters_per_second",
                     "wpm_deviation", "duration_deviation", "length_deviation"
                 ],
-                "warmup_threshold": 20
+                "warmup_threshold": 40  # Increased from 20 to 40
             },
             "tap": {
                 "features": [
@@ -47,7 +143,7 @@ class UserBehaviorModelManager:
                     "tap_region_entropy", "tap_pressure", "distance_from_user_mean",
                     "normalized_x", "normalized_y", "is_near_edge", "tap_pressure_deviation"
                 ],
-                "warmup_threshold": 15
+                "warmup_threshold": 30  # Increased from 15 to 30
             },
             "swipe": {
                 "features": [
@@ -55,7 +151,7 @@ class UserBehaviorModelManager:
                     "avg_user_swipe_distance", "swipe_direction_entropy", 
                     "swipe_direction_consistency", "distance", "duration", "angle"
                 ],
-                "warmup_threshold": 10
+                "warmup_threshold": 25  # Increased from 10 to 25
             }
         }
         
@@ -83,12 +179,13 @@ class UserBehaviorModelManager:
     
     def create_new_model(self, model_type):
         """Create a new River online learning model"""
+        # Use our custom ContinuousHalfSpaceTrees for better anomaly scores
         return Pipeline(
             StandardScaler(),
-            HalfSpaceTrees(
-                n_trees=50,
-                height=8,
-                window_size=250,
+            ContinuousHalfSpaceTrees(
+                n_trees=25,      # Moderate number of trees for balance
+                height=4,        # Lower height for more sensitivity
+                window_size=50,  # Smaller window for faster adaptation
                 seed=42
             )
         )
@@ -106,9 +203,16 @@ class UserBehaviorModelManager:
             except Exception as e:
                 logger.error(f"Error loading model for user {user_id}: {e}")
         
-        # Create new model
+        # Create new model and pre-train with historical data if available
         model = self.create_new_model(model_type)
-        logger.info(f"Created new {model_type} model for user {user_id}")
+        
+        # Pre-train with historical CSV data to skip warmup
+        if self.user_model_metadata[user_id][model_type]["samples"] > 0:
+            logger.info(f"Pre-training {model_type} model for user {user_id} with historical data...")
+            self.pretrain_model_from_csv(user_id, model_type, model)
+        else:
+            logger.info(f"Created new {model_type} model for user {user_id}")
+        
         return model
     
     def save_model(self, user_id, model_type, model):
@@ -142,6 +246,85 @@ class UserBehaviorModelManager:
                 json.dump(self.user_model_metadata[user_id], f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Error saving metadata for user {user_id}: {e}")
+    
+    def initialize_from_csv_data(self):
+        """Initialize model metadata from existing CSV files"""
+        backend_python_dir = os.path.join(os.path.dirname(__file__), '..', 'backend-python')
+        
+        # Count samples from CSV files for user 1 (most common user)
+        csv_files = {
+            'tap': 'tap_features_data.csv',
+            'typing': 'typing_features_data.csv', 
+            'swipe': 'swipe_features_data.csv'
+        }
+        
+        user_id = "1"  # Initialize for user 1 based on the logs
+        
+        for model_type, csv_file in csv_files.items():
+            csv_path = os.path.join(backend_python_dir, csv_file)
+            if os.path.exists(csv_path):
+                try:
+                    df = pd.read_csv(csv_path)
+                    # Since CSV files don't have user_id, assume all data is for user 1
+                    # Use a portion of the data to simulate historical training
+                    total_samples = len(df)
+                    user_samples = min(total_samples, 100)  # Use up to 100 samples for warmup
+                    
+                    if user_samples > 0:
+                        self.user_model_metadata[user_id][model_type]["samples"] = user_samples
+                        self.user_model_metadata[user_id][model_type]["last_updated"] = datetime.now()
+                        logger.info(f"Initialized user {user_id} {model_type} model with {user_samples} historical samples (from {total_samples} total)")
+                except Exception as e:
+                    logger.error(f"Error reading CSV {csv_file}: {e}")
+    
+    def pretrain_model_from_csv(self, user_id, model_type, model):
+        """Pre-train a model using historical CSV data"""
+        backend_python_dir = os.path.join(os.path.dirname(__file__), '..', 'backend-python')
+        csv_file = f"{model_type}_features_data.csv"
+        csv_path = os.path.join(backend_python_dir, csv_file)
+        
+        if not os.path.exists(csv_path):
+            return
+        
+        try:
+            df = pd.read_csv(csv_path)
+            
+            # Filter for this user (assume user_id 1 if no user_id column)
+            if 'user_id' in df.columns:
+                user_data = df[df['user_id'] == int(user_id)]
+            else:
+                user_data = df.head(100)  # Use first 100 samples for training
+            
+            if len(user_data) == 0:
+                return
+            
+            # Get required features for this model type
+            required_features = self.model_config[model_type]["features"]
+            trained_samples = 0
+            
+            for _, row in user_data.iterrows():
+                features = {}
+                for feature in required_features:
+                    if feature in row:
+                        try:
+                            features[feature] = float(row[feature])
+                        except (ValueError, TypeError):
+                            features[feature] = 0.0
+                    else:
+                        features[feature] = 0.0
+                
+                # Train the model with this sample
+                model.learn_one(features)
+                trained_samples += 1
+                
+                # Limit training samples to avoid overloading
+                if trained_samples >= 50:
+                    break
+            
+            logger.info(f"Pre-trained {model_type} model for user {user_id} with {trained_samples} historical samples")
+            
+        except Exception as e:
+            logger.error(f"Error pre-training model from CSV: {e}")
     
     def extract_features(self, session_data, model_type):
         """Extract relevant features for specific model type"""
@@ -178,15 +361,18 @@ class UserBehaviorModelManager:
         metadata["samples"] += 1
         metadata["last_updated"] = datetime.now()
         
-        # Check if in warmup phase
+        # Check if in warmup phase (account for historical data)
         warmup_threshold = self.model_config[model_type]["warmup_threshold"]
         is_warmup = metadata["samples"] < warmup_threshold
         
         if is_warmup:
             # During warmup, just learn without scoring
             model.learn_one(features)
-            anomaly_score = 0.0
-            logger.info(f"Warmup phase for user {user_id} {model_type}: {metadata['samples']}/{warmup_threshold}")
+            # Use a more gradual baseline score during warmup
+            warmup_progress = metadata["samples"] / warmup_threshold
+            baseline_score = 0.05 + (warmup_progress * 0.05)  # Gradually increase from 0.05 to 0.10
+            anomaly_score = baseline_score
+            logger.info(f"Warmup phase for user {user_id} {model_type}: {metadata['samples']}/{warmup_threshold}, baseline_score={baseline_score:.3f}")
         else:
             # Score first, then learn (online learning)
             anomaly_score = model.score_one(features)
@@ -219,13 +405,26 @@ class UserBehaviorModelManager:
             "models": {}
         }
         
+        # Check if we have behavioral_data (legacy format)
+        behavioral_data = session_data.get("behavioral_data", {})
+        
+        # Get the event type from the session data (WebSocket direct format)
+        event_type = session_data.get("type")
+        
         # Process each model type
         for model_type in ["typing", "tap", "swipe"]:
-            # Check if session contains relevant features for this model
-            required_features = self.model_config[model_type]["features"]
-            has_features = any(feature in session_data for feature in required_features)
+            # Check if session contains relevant data for this model type
+            should_process = False
             
-            if has_features:
+            # Legacy format: check behavioral_data[model_type]
+            if model_type in behavioral_data and behavioral_data[model_type]:
+                should_process = True
+            
+            # WebSocket direct format: check if event_type matches model_type
+            elif event_type == model_type:
+                should_process = True
+            
+            if should_process:
                 anomaly_score, is_warmup = self.update_user_model(user_id, model_type, session_data)
                 
                 results["models"][model_type] = {

@@ -32,7 +32,7 @@ const LoginPage: React.FC = () => {
   const [toastMsg, setToastMsg] = useState('');
 
   const history = useHistory();
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
   const contentRef = useRef<IonContentElement>(null);
   const { send, isConnected, error: wsError } = useWebSocket('ws://localhost:8081');
 
@@ -44,6 +44,21 @@ const LoginPage: React.FC = () => {
   // Clear auth errors when component mounts or when user starts typing
   useEffect(() => {
     clearError();
+    
+    // Check for forced logout message
+    const logoutReason = localStorage.getItem('logout_reason');
+    const forcedLogoutReason = localStorage.getItem('forced_logout_reason');
+    
+    if (logoutReason) {
+      const reason = JSON.parse(logoutReason);
+      setToastMsg(`Session terminated: ${reason.reason}. Risk score: ${(reason.score * 100).toFixed(0)}%`);
+      setShowToast(true);
+      localStorage.removeItem('logout_reason');
+    } else if (forcedLogoutReason) {
+      setToastMsg(`Security Alert: ${forcedLogoutReason}`);
+      setShowToast(true);
+      localStorage.removeItem('forced_logout_reason');
+    }
   }, [clearError]);
 
   // Show authentication errors
@@ -115,6 +130,16 @@ const LoginPage: React.FC = () => {
   return (
     <IonPage className="h-full bg-gradient-to-b from-white to-[#01A0E3]">
       <IonContent fullscreen ref={contentRef as any}>
+        {/* Authentication Status Header */}
+        {!isAuthenticated && (
+          <div className="w-full bg-red-50 border-b border-red-200 py-2 px-4 flex items-center justify-center">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-red-600 font-medium">Not Logged In - Please Login to Continue</span>
+            </div>
+          </div>
+        )}
+        
         <div className="flex flex-col h-screen justify-center items-center bg-gradient-to-b from-white to-[#01A0E3]">
           <div className="w-full bg-white rounded-lg shadow-md max-w-md px-6 py-8">
             <div className='w-full flex flex-row justify-center mb-10'>

@@ -17,9 +17,9 @@ class RealTimeModelProcessor:
     def __init__(self):
         self.model_manager = model_manager
         self.risk_thresholds = {
-            "typing": 0.7,
-            "tap": 0.8, 
-            "swipe": 0.6
+            "typing": 0.8,   # Updated to match model.py changes
+            "tap": 0.8,      # Updated to match model.py changes
+            "swipe": 0.8     # Updated to match model.py changes
         }
         self.alert_callbacks = []
     
@@ -88,7 +88,7 @@ class RealTimeModelProcessor:
                         "model": model_type,
                         "score": score,
                         "threshold": threshold,
-                        "severity": "high" if score > 0.9 else "medium",
+                        "severity": "high" if score > 0.95 else "medium",  # Updated to 0.95 for less frequent logout
                         "message": f"Unusual {model_type} behavior detected (score: {score:.3f})"
                     })
         
