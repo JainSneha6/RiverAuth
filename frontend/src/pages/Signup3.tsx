@@ -10,6 +10,7 @@ import {
   DollarSign,
   CreditCard,
   CheckSquare,
+  ChevronDown,
 } from 'lucide-react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +20,7 @@ import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
 import { apiService } from '../services/api';
+import { Listbox } from '@headlessui/react';
 
 const states = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana',
@@ -203,17 +205,34 @@ const Signup3: React.FC = () => {
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
                 <Map className="h-4 w-4" /> State
               </label>
-              <select
-                value={formData.state}
-                onChange={e => handleChange('state', e.target.value)}
-                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
-                className="w-full"
-              >
-                <option value="">Select State</option>
-                {states.map(state => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
+              <Listbox value={formData.state} onChange={(value: string) => handleChange('state', value)}>
+                <div className="relative">
+                  <Listbox.Button
+                    className="w-full flex justify-between items-center bg-white border py-4 px-6 min-h-[48px] text-left focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                    style={{ borderRadius: '0.375rem', borderColor: '#9ca3af' }}
+                  >
+                    <span>{formData.state || 'Select State'}</span>
+                    <ChevronDown className="h-4 w-4 ml-2 text-gray-400" />
+                  </Listbox.Button>
+                  <Listbox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                    {states.map((state) => (
+                      <Listbox.Option
+                        key={state}
+                        value={state}
+                        className={({ active }: { active: boolean }) =>
+                          `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
+                            active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
+                          }`
+                        }
+                      >
+                        {({ selected }: { selected: boolean }) => (
+                          <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>{state}</span>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </div>
+              </Listbox>
             </div>
           </div>
           {/* Pincode */}
