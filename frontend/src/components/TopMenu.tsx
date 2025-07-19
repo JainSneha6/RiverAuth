@@ -115,14 +115,12 @@ const TopMenu = () => {
   return (
     <>
       <div className='flex justify-between items-center border-black w-full text-black'>
-        <div className='grid grid-cols-3 gap-2 items-center'>
           <IonIcon 
             icon={menu} 
             className="text-4xl text-black cursor-pointer" 
             onClick={() => (document.querySelector('ion-menu') as any)?.open()} 
           />
-          <img src={banner} className=''/>
-        </div>
+          <img src={banner} className='h-12 w-auto'/>
         
         {/* Authentication Status Indicator */}
         <div className='flex items-center gap-2'>
@@ -144,16 +142,7 @@ const TopMenu = () => {
                   icon={checkmarkCircle} 
                   className="text-lg text-green-600" 
                 />
-                <span className='text-sm text-green-700 font-medium'>
-                  {user?.username || 'Logged In'}
-                </span>
               </div>
-              <IonIcon 
-                icon={logOut} 
-                className="text-2xl text-gray-600 cursor-pointer hover:text-red-600 transition-colors" 
-                onClick={handleLogout}
-                title="Logout"
-              />
             </div>
           )}
         </div>
