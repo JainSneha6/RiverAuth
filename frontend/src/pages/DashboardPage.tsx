@@ -143,7 +143,6 @@ const DashboardPage: React.FC = () => {
   return (
     <Layout contentRef={contentRef}>
       <div className="w-full text-left flex flex-col text-black mt-5">
-        <div className="font-bold text-xl">Welcome, Suraj!</div>
         <div className="text-sm mt-5">Your Balance</div>
         <div className="text-6xl font-bold">69,420.00</div>
       </div>
@@ -156,78 +155,6 @@ const DashboardPage: React.FC = () => {
           className="w-full bg-white rounded-md shadow-md p-2"
           style={{ color: 'black' }}
         />
-      </div>
-
-      {/* Security Testing Section */}
-      <div className="mt-5 w-full bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="text-black font-semibold mb-3">🛡️ Security Monitoring Demo</div>
-        <div className="text-sm text-gray-600 mb-4">
-          Simulate different risk scenarios to test the behavioral monitoring system:
-        </div>
-        <div className="grid grid-cols-1 gap-2">
-          <button
-            className="bg-orange-500 text-white px-4 py-2 rounded text-sm hover:bg-orange-600"
-            onClick={() => {
-              // Simulate medium risk by sending fake WebSocket message
-              send({
-                type: 'test_alert',
-                user_id: userId,
-                behavioral_alert: {
-                  type: 'behavioral_alert',
-                  score: 0.65,
-                  model: 'typing',
-                  severity: 'medium',
-                  message: 'Simulated medium risk - unusual typing pattern detected',
-                  timestamp: Date.now()
-                }
-              });
-            }}
-          >
-            🟡 Test Medium Risk (Security Questions)
-          </button>
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600"
-            onClick={() => {
-              // Simulate high risk by sending fake WebSocket message
-              send({
-                type: 'test_alert',
-                user_id: userId,
-                behavioral_alert: {
-                  type: 'behavioral_alert',
-                  score: 0.95,
-                  model: 'tap',
-                  severity: 'high',
-                  message: 'Simulated high risk - suspicious tap behavior detected',
-                  timestamp: Date.now()
-                }
-              });
-            }}
-          >
-            🔴 Test High Risk (Force Logout)
-          </button>
-          <button
-            className="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600"
-            onClick={() => {
-              send({
-                type: 'test_alert',
-                user_id: userId,
-                behavioral_alert: {
-                  type: 'behavioral_alert',
-                  score: 0.25,
-                  model: 'swipe',
-                  severity: 'low',
-                  message: 'Normal behavior - no action needed',
-                  timestamp: Date.now()
-                }
-              });
-            }}
-          >
-            🟢 Test Low Risk (No Action)
-          </button>
-        </div>
-        <div className="text-xs text-gray-500 mt-3">
-          Note: These are simulated alerts for demonstration purposes only.
-        </div>
       </div>
 
       <div className="mt-5 w-full">
