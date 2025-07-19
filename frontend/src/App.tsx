@@ -59,8 +59,8 @@ const App: React.FC = () => (
       <WebSocketProvider url="ws://localhost:8081">
         <IonApp>
           {/* Side Drawer Menu */}
-          <DrawerMenu />
           <IonReactRouter>
+            <DrawerMenu />
             <IonRouterOutlet>
 
             <Route exact path="/login">
