@@ -6,6 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from user_model_manager import process_behavior_stream, get_user_stats, model_manager
+from model_scores_logger import log_model_score, get_system_analytics
 import json
 import asyncio
 from datetime import datetime
@@ -83,14 +84,40 @@ class RealTimeModelProcessor:
                 threshold = self.risk_thresholds.get(model_type, 0.7)
                 
                 if score > threshold:
-                    alerts.append({
+                    severity = "high" if score > 0.95 else "medium"
+                    
+                    alert = {
                         "type": "anomaly_detected",
                         "model": model_type,
                         "score": score,
                         "threshold": threshold,
-                        "severity": "high" if score > 0.95 else "medium",  # Updated to 0.95 for less frequent logout
+                        "severity": severity,
                         "message": f"Unusual {model_type} behavior detected (score: {score:.3f})"
-                    })
+                    }
+                    alerts.append(alert)
+                    
+                    # Log the alert with additional context
+                    try:
+                        alert_info = {
+                            'user_action': 'alert_generated',
+                            'session_id': result.get('session_id', ''),
+                            'notes': f"Alert: {severity} risk detected for {model_type} model"
+                        }
+                        
+                        score_data = {
+                            'anomaly_score': score,
+                            'is_warmup': model_result["is_warmup"],
+                            'sample_count': model_result.get("samples_count", 0),
+                            'features_processed': [],
+                            'processing_time_ms': 0,
+                            'confidence': 1.0,
+                            'alert_severity': severity,
+                            'threshold_exceeded': threshold
+                        }
+                        
+                        log_model_score(result["user_id"], f"{model_type}_alert", score_data, alert_info)
+                    except Exception as e:
+                        print(f"Error logging alert: {e}")
         
         return alerts
     

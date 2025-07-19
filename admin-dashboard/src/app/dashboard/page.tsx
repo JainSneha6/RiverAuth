@@ -187,6 +187,14 @@ const Page = (props: Props) => {
               <li>Suspicious logout from Delhi</li>
               <li>Model retrained with July data</li>
             </ul>
+            <div className="mt-4">
+              <Link 
+                href="/model-scores" 
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                📊 View Detailed Model Scores →
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

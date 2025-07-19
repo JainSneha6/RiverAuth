@@ -103,6 +103,10 @@ class ContinuousHalfSpaceTrees(AnomalyDetector):
 from scipy.stats import entropy
 from scipy.spatial.distance import mahalanobis
 import logging
+import time
+
+# Import the model scores logger
+from model_scores_logger import log_model_score, log_batch_model_scores
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -347,6 +351,8 @@ class UserBehaviorModelManager:
         Update user-specific model with new data (online learning)
         Returns: (anomaly_score, is_warmup_phase)
         """
+        start_time = time.time()
+        
         # Extract features for this model type
         features = self.extract_features(session_data, model_type)
         
@@ -383,6 +389,50 @@ class UserBehaviorModelManager:
             if len(metadata["anomaly_scores"]) > 100:  # Keep last 100 scores
                 metadata["anomaly_scores"] = metadata["anomaly_scores"][-100:]
         
+        # Calculate processing time
+        processing_time_ms = (time.time() - start_time) * 1000
+        
+        # Calculate model confidence (based on number of samples)
+        model_confidence = min(1.0, metadata["samples"] / warmup_threshold)
+        
+        # Calculate data quality score (based on feature completeness)
+        total_features = len(self.model_config[model_type]["features"])
+        valid_features = sum(1 for v in features.values() if v != 0.0)
+        data_quality_score = valid_features / total_features if total_features > 0 else 0.0
+        
+        # Prepare score data for logging
+        score_data = {
+            'anomaly_score': anomaly_score,
+            'is_warmup': is_warmup,
+            'sample_count': metadata["samples"],
+            'features_processed': list(features.keys()),
+            'processing_time_ms': processing_time_ms,
+            'confidence': model_confidence,
+            'model_version': '1.0',
+            'model_params': {
+                'warmup_threshold': warmup_threshold,
+                'n_trees': 25,
+                'height': 4,
+                'window_size': 50
+            },
+            'data_quality_score': data_quality_score,
+            'drift_detected': False,  # TODO: implement drift detection
+            'feature_importance': features  # For now, just log the features
+        }
+        
+        # Additional information
+        additional_info = {
+            'session_id': session_data.get('session_id', ''),
+            'user_action': 'none',  # Will be updated based on score
+            'notes': f"Model type: {model_type}, Features: {len(features)}"
+        }
+        
+        # Log the score
+        try:
+            log_model_score(user_id, model_type, score_data, additional_info)
+        except Exception as e:
+            logger.error(f"Error logging model score for user {user_id}: {e}")
+        
         # Save updated model and metadata
         self.save_model(user_id, model_type, model)
         self.save_metadata(user_id)
@@ -411,6 +461,9 @@ class UserBehaviorModelManager:
         # Get the event type from the session data (WebSocket direct format)
         event_type = session_data.get("type")
         
+        # Prepare batch score data for logging
+        batch_score_data = {}
+        
         # Process each model type
         for model_type in ["typing", "tap", "swipe"]:
             # Check if session contains relevant data for this model type
@@ -434,6 +487,21 @@ class UserBehaviorModelManager:
                 }
                 
                 logger.info(f"User {user_id} {model_type}: score={anomaly_score:.3f}, samples={results['models'][model_type]['samples_count']}")
+        
+        # Log batch scores if any models were processed
+        if results["models"]:
+            session_info = {
+                'session_id': session_data.get('session_id', ''),
+                'user_action': 'none',
+                'notes': f"Batch processing for event type: {event_type}"
+            }
+            
+            try:
+                # Note: Individual scores are already logged in update_user_model
+                # This is just for session-level tracking
+                pass
+            except Exception as e:
+                logger.error(f"Error logging batch scores for user {user_id}: {e}")
         
         return results
     
