@@ -105,8 +105,15 @@ from scipy.spatial.distance import mahalanobis
 import logging
 import time
 
-# Import the model scores logger
-from model_scores_logger import log_model_score, log_batch_model_scores
+# Import the real-time model scores logger
+try:
+    from model_score_logger import log_model_score, get_latest_stats
+except ImportError:
+    # Fallback if logger not available
+    def log_model_score(*args, **kwargs):
+        pass
+    def get_latest_stats():
+        return {}
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -400,38 +407,33 @@ class UserBehaviorModelManager:
         valid_features = sum(1 for v in features.values() if v != 0.0)
         data_quality_score = valid_features / total_features if total_features > 0 else 0.0
         
-        # Prepare score data for logging
-        score_data = {
-            'anomaly_score': anomaly_score,
-            'is_warmup': is_warmup,
-            'sample_count': metadata["samples"],
-            'features_processed': list(features.keys()),
-            'processing_time_ms': processing_time_ms,
-            'confidence': model_confidence,
-            'model_version': '1.0',
-            'model_params': {
-                'warmup_threshold': warmup_threshold,
-                'n_trees': 25,
-                'height': 4,
-                'window_size': 50
-            },
-            'data_quality_score': data_quality_score,
-            'drift_detected': False,  # TODO: implement drift detection
-            'feature_importance': features  # For now, just log the features
-        }
+        # Calculate risk level based on anomaly score
+        if anomaly_score <= 0.3:
+            risk_level = 'low'
+            action_taken = 'none'
+        elif anomaly_score <= 0.7:
+            risk_level = 'medium'
+            action_taken = 'security_challenge' if anomaly_score > 0.5 else 'none'
+        else:
+            risk_level = 'high'
+            action_taken = 'force_logout' if anomaly_score > 0.9 else 'require_additional_auth'
         
-        # Additional information
-        additional_info = {
-            'session_id': session_data.get('session_id', ''),
-            'user_action': 'none',  # Will be updated based on score
-            'notes': f"Model type: {model_type}, Features: {len(features)}"
-        }
-        
-        # Log the score
+        # Log the score in real-time using the new logger
         try:
-            log_model_score(user_id, model_type, score_data, additional_info)
+            log_model_score(
+                user_id=user_id,
+                model_type=model_type,
+                anomaly_score=anomaly_score,
+                is_warmup=is_warmup,
+                samples_count=metadata["samples"],
+                features_processed=len(features),
+                risk_level=risk_level,
+                action_taken=action_taken,
+                session_duration=int(processing_time_ms)  # Using processing time as session duration for now
+            )
+            logger.info(f"🔄 Real-time logged score: User {user_id}, Model {model_type}, Score {anomaly_score:.3f}, Risk {risk_level}")
         except Exception as e:
-            logger.error(f"Error logging model score for user {user_id}: {e}")
+            logger.error(f"❌ Error logging model score for user {user_id}: {e}")
         
         # Save updated model and metadata
         self.save_model(user_id, model_type, model)

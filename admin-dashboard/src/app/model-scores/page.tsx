@@ -42,6 +42,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+// Interface for model score data
+interface ModelScore {
+  timestamp: string;
+  user_id: string;
+  model_type: string;
+  anomaly_score: number;
+  is_warmup: boolean;
+  samples_count: number;
+  features_processed: number;
+  risk_level: string;
+  action_taken: string;
+  session_duration: number;
+}
+
 // Mock data - In real implementation, this would come from CSV file
 const mockModelScores = [
   {
@@ -160,7 +174,7 @@ const getActionColor = (action: string) => {
 };
 
 const ModelScoresPage = () => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<ModelScore[]>([]);
   const [stats, setStats] = useState({
     total_records: 0,
     filtered_records: 0,
@@ -175,6 +189,9 @@ const ModelScoresPage = () => {
   const [filterModel, setFilterModel] = useState("all");
   const [filterRisk, setFilterRisk] = useState("all");
   const [page, setPage] = useState(1);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5000); // 5 seconds
 
   const fetchData = async () => {
     try {
@@ -194,22 +211,48 @@ const ModelScoresPage = () => {
         setData(result.data || []);
         setStats(result.stats || stats);
         setError("");
+        setLastUpdated(new Date().toLocaleTimeString());
       } else {
         setError(result.error || "Failed to fetch data");
         setData(mockModelScores); // Fallback to mock data
+        setLastUpdated(new Date().toLocaleTimeString() + ' (Demo Data)');
       }
     } catch (err) {
       setError("Failed to connect to API");
       setData(mockModelScores); // Fallback to mock data
+      setLastUpdated(new Date().toLocaleTimeString() + ' (Demo Data)');
       console.error("API Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Real-time auto-refresh functionality
   useEffect(() => {
     fetchData();
-  }, [searchUser, filterModel, filterRisk, page]);
+    
+    let intervalId: NodeJS.Timeout;
+    
+    if (autoRefresh) {
+      intervalId = setInterval(() => {
+        fetchData();
+      }, refreshInterval);
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [searchUser, filterModel, filterRisk, page, autoRefresh, refreshInterval]);
+
+  const toggleAutoRefresh = () => {
+    setAutoRefresh(!autoRefresh);
+  };
+
+  const handleManualRefresh = () => {
+    fetchData();
+  };
 
   if (loading) {
     return (
@@ -243,7 +286,54 @@ const ModelScoresPage = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="font-bold my-4 text-3xl">ML Model Scores Dashboard</div>
+      <div className="flex justify-between items-center my-4">
+        <div className="font-bold text-3xl">ML Model Scores Dashboard</div>
+        
+        {/* Real-time Controls */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Last Updated:</span>
+            <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+              {lastUpdated || 'Never'}
+            </span>
+          </div>
+          
+          <Button
+            onClick={handleManualRefresh}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+          >
+            🔄 Refresh
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={toggleAutoRefresh}
+              variant={autoRefresh ? "default" : "outline"}
+              size="sm"
+            >
+              {autoRefresh ? "⏸️ Pause" : "▶️ Auto"} Refresh
+            </Button>
+            
+            {autoRefresh && (
+              <select
+                value={refreshInterval}
+                onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                className="px-2 py-1 border rounded text-sm"
+              >
+                <option value={2000}>2s</option>
+                <option value={5000}>5s</option>
+                <option value={10000}>10s</option>
+                <option value={30000}>30s</option>
+              </select>
+            )}
+          </div>
+          
+          <div className={`w-3 h-3 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} 
+               title={autoRefresh ? 'Auto-refresh active' : 'Auto-refresh paused'}></div>
+        </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
