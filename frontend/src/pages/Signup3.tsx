@@ -30,6 +30,10 @@ const states = [
   'Ladakh', 'Puducherry',
 ];
 
+const accountTypes = [
+  'Savings Account', 'Business Account', 'Current Account'
+];
+
 interface IonContentElement extends HTMLElement {
   getScrollElement(): Promise<HTMLElement>;
   scrollToBottom(duration?: number): Promise<void>;
@@ -307,17 +311,34 @@ const Signup3: React.FC = () => {
               <label className="text-sm text-gray-700 flex items-center gap-1 mb-1">
                 <CreditCard className="h-4 w-4" /> Account Type
               </label>
-              <select
-                value={formData.accountType}
-                onChange={e => handleChange('accountType', e.target.value)}
-                style={{ color: 'black', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem' }}
-                className="w-full"
-              >
-                <option value="">Select Account Type</option>
-                <option value="savings">Savings Account</option>
-                <option value="current">Current Account</option>
-                <option value="fixed">Fixed Deposit</option>
-              </select>
+              <Listbox value={formData.accountType} onChange={(value: string) => handleChange('accountType', value)}>
+                <div className="relative">
+                  <Listbox.Button
+                    className="w-full flex justify-between items-center bg-white border py-4 px-6 min-h-[48px] text-left focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                    style={{ borderRadius: '0.375rem', borderColor: '#9ca3af' }}
+                  >
+                    <span>{formData.accountType || 'Select Account Type'}</span>
+                    <ChevronDown className="h-4 w-4 ml-2 text-gray-400" />
+                  </Listbox.Button>
+                  <Listbox.Options className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                    {accountTypes.map((type) => (
+                      <Listbox.Option
+                        key={type}
+                        value={type}
+                        className={({ active }: { active: boolean }) =>
+                          `relative cursor-pointer select-none py-2 pl-3 pr-9 ${
+                            active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
+                          }`
+                        }
+                      >
+                        {({ selected }: { selected: boolean }) => (
+                          <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>{type}</span>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </div>
+              </Listbox>
             </div>
           </div>
           {/* Agree Terms */}
