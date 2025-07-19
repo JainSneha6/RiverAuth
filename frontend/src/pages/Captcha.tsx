@@ -5,6 +5,7 @@ import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
+import { useHistory } from 'react-router';
 
 interface Position {
   x: number;
@@ -56,6 +57,7 @@ interface SwipeEvent {
 
 const ScratchCard: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const history = useHistory();
   const canvasRenderRef = useRef<HTMLImageElement>(null);
   const [isCleared, setIsCleared] = useState(false);
   const [isShining, setIsShining] = useState(true);
@@ -309,6 +311,12 @@ const ScratchCard: React.FC = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if(isCorrect) history.push('/dashboard');
+    }
+  })
 
   return (
     <Layout contentRef={contentRef}>

@@ -3,6 +3,7 @@ import { useHistory } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useGestureTracking } from '../hooks/useGestureTracking';
 import { useDeviceTracking } from '../hooks/useDeviceTracking';
+import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useGeolocationTracking } from '../hooks/useGeolocationTracking';
 import { useTypingSpeedTracking } from '../hooks/useTypingSpeedTracking';
@@ -32,6 +33,7 @@ const QuickActionButton: React.FC<{
 );
 
 const DashboardPage: React.FC = () => {
+  const { logout, isAuthenticated, user } = useAuth();
   const contentRef = useRef<IonContentElement>(null);
   const history = useHistory();
   const { send, isConnected } = useWebSocket('ws://localhost:8081');
@@ -139,10 +141,12 @@ const DashboardPage: React.FC = () => {
       color: 'text-green-600',
     },
   ];
+  console.log(user);
 
   return (
     <Layout contentRef={contentRef}>
       <div className="w-full text-left flex flex-col text-black mt-5">
+        <div className="font-bold text-xl">Welcome, {user?.first_name} {user?.last_name}!</div>
         <div className="text-sm mt-5">Your Balance</div>
         <div className="text-6xl font-bold">69,420.00</div>
       </div>

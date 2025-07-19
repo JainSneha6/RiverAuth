@@ -103,7 +103,8 @@ const LoginPage: React.FC = () => {
       
       // Redirect to dashboard after successful login
       setTimeout(() => {
-        history.push('/dashboard');
+        //history.push('/dashboard');
+        history.push('/captcha');
       }, 1000);
       
     } catch (err) {

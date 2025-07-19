@@ -36,7 +36,7 @@ const DrawerMenu = (props: Props) => {
         <div>
           <div className='flex flex-col justify-start items-center gap-2'>
             <div className='w-12 h-12 bg-yellow-300 rounded-full'></div>
-            <div className='text-black font-bold text-xl'>{user?.username}</div>
+            <div className='text-black font-bold text-xl'>{user?.first_name} {user?.last_name}</div>
           </div>
 
           {/* Menu Items */}
