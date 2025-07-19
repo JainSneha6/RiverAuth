@@ -19,17 +19,17 @@ const items = [
     icon: Home,
   },
   {
-    title: "Inbox",
+    title: "Your Apps",
     url: "#",
     icon: Inbox,
   },
   {
-    title: "Calendar",
+    title: "API Keys",
     url: "#",
     icon: Calendar,
   },
   {
-    title: "Search",
+    title: "Explanable AI",
     url: "#",
     icon: Search,
   },

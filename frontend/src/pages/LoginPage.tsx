@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
           </div>
         )}
         
-        <div className="flex flex-col h-screen justify-center items-center bg-gradient-to-b from-white to-[#01A0E3]">
+        <div className="p-5 flex flex-col h-screen justify-center items-center bg-gradient-to-b from-white to-[#01A0E3]">
           <div className="w-full bg-white rounded-lg shadow-md max-w-md px-6 py-8">
             <div className='w-full flex flex-row justify-center mb-10'>
             <img src={canaraLogo} alt="Logo" className="h-12" />
