@@ -31,6 +31,15 @@ export async function GET(request: NextRequest) {
 
     // Try multiple possible paths for the CSV file
     const possiblePaths = [
+      // Path 1: Backend-python directory (most likely) 
+      path.join(process.cwd(), '..', 'backend-python', 'typing_features_data.csv'),
+      // Path 2: Same directory as admin-dashboard
+      path.join(process.cwd(), 'typing_features_data.csv'),
+      // Path 3: Relative from admin-dashboard
+      path.join(process.cwd(), '..', '..', '..', '..', 'backend-python', 'typing_features_data.csv'),
+      // Path 4: Other possible locations
+      path.join(process.cwd(), 'backend-python', 'typing_features_data.csv'),
+      // Legacy paths
       path.join(process.cwd(), 'behavioral_data', 'typing_speed_data.csv'),
       path.join(process.cwd(), '..', 'behavioral_data', 'typing_speed_data.csv'),
       path.join(process.cwd(), '..', 'model', 'behavioral_data', 'typing_speed_data.csv'),
@@ -41,6 +50,7 @@ export async function GET(request: NextRequest) {
     for (const possiblePath of possiblePaths) {
       if (fs.existsSync(possiblePath)) {
         csvPath = possiblePath;
+        console.log('Found typing CSV at:', csvPath);
         break;
       }
     }

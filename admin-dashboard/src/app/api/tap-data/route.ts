@@ -31,23 +31,31 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const page = parseInt(searchParams.get('page') || '1');
 
-    // Try multiple possible paths for the CSV file
+    // Try multiple possible paths for the CSV file  
     const possiblePaths = [
+      // Path 1: Backend-python directory (most likely)
+      path.join(process.cwd(), '..', 'backend-python', 'tap_features_data.csv'),
+      // Path 2: Same directory as admin-dashboard
+      path.join(process.cwd(), 'tap_features_data.csv'),
+      // Path 3: Relative from admin-dashboard
+      path.join(process.cwd(), '..', '..', '..', '..', 'backend-python', 'tap_features_data.csv'),
+      // Path 4: Other possible locations
+      path.join(process.cwd(), 'backend-python', 'tap_features_data.csv'),
       path.join(process.cwd(), 'behavioral_data', 'tap_gesture_data.csv'),
-      path.join(process.cwd(), '..', 'behavioral_data', 'tap_gesture_data.csv'),
-      path.join(process.cwd(), '..', 'model', 'behavioral_data', 'tap_gesture_data.csv'),
       path.join(process.cwd(), 'tap_gesture_data.csv')
     ];
-
+    
     let csvPath: string | null = null;
     for (const possiblePath of possiblePaths) {
       if (fs.existsSync(possiblePath)) {
         csvPath = possiblePath;
+        console.log('Found tap_features_data.csv at:', csvPath);
         break;
       }
     }
-
+    
     if (!csvPath) {
+      console.log('Tap CSV file not found in any of these paths:', possiblePaths);
       // Generate mock data for demonstration
       const mockData = generateMockTapData();
       const filteredData = user_id 

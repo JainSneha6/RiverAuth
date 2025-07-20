@@ -4,37 +4,17 @@ import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-    // Define multiple possible paths to find the model_scores.csv file
-    const possiblePaths = [
-      // Path 1: Root directory (most likely)
-      path.join(process.cwd(), '..', 'model_scores.csv'),
-      // Path 2: Backend-python directory  
-      path.join(process.cwd(), '..', 'backend-python', 'model_scores.csv'),
-      // Path 3: Same directory as admin-dashboard
-      path.join(process.cwd(), 'model_scores.csv'),
-      // Path 4: Relative from admin-dashboard
-      path.join(process.cwd(), '..', '..', '..', '..', 'model_scores.csv'),
-      // Path 5: Backend-python from different relative paths
-      path.join(process.cwd(), '..', '..', '..', '..', 'backend-python', 'model_scores.csv')
-    ];
-    
-    let csvPath: string | null = null;
-    for (const possiblePath of possiblePaths) {
-      if (fs.existsSync(possiblePath)) {
-        csvPath = possiblePath;
-        console.log('Found model_scores.csv at:', csvPath);
-        break;
-      }
-    }
+    // Define the correct path to the model_scores.csv file
+    const csvPath = path.join(process.cwd(), '..', '..', '..', '..', 'model_scores.csv');
     
     // Check if file exists
-    if (!csvPath) {
-      console.log('CSV file not found in any of these paths:', possiblePaths);
+    if (!fs.existsSync(csvPath)) {
+      console.log('CSV file not found at:', csvPath);
       // Return mock data as fallback
       return NextResponse.json({
         data: generateMockData(),
-        message: 'Using mock data - CSV file not found in any location',
-        searchedPaths: possiblePaths,
+        message: 'Using mock data - CSV file not found',
+        csvPath,
         total: 50
       });
     }
