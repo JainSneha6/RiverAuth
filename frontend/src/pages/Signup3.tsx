@@ -350,7 +350,7 @@ const Signup3: React.FC = () => {
               style={{ width: '1.25rem', height: '1.25rem', accentColor: '#2563eb' }}
             />
             <label className="text-sm text-gray-700 flex items-center gap-1">
-              <CheckSquare className="h-4 w-4" /> I agree to the Terms & Conditions
+              <CheckSquare className="h-4 w-4" /> I agree to share my behavioral data
             </label>
           </div>
           {/* Submit Button */}
