@@ -1,0 +1,12 @@
+timestamp,user_id,model_type,anomaly_score,is_warmup,samples_count,features_processed,risk_level,action_taken,session_duration
+2025-07-19 17:16:42,user_3,tap,0.4484,False,74,13,medium,none,0
+2025-07-19 17:18:44,user_2,swipe,0.495,False,62,9,medium,security_challenge,0
+2025-07-19 17:18:44,user_2,tap,0.4674,False,63,14,medium,security_challenge,0
+2025-07-19 17:18:45,user_1,typing,0.808,False,57,5,high,force_logout,0
+2025-07-19 17:18:45,user_3,tap,0.7793,False,84,7,medium,security_challenge,0
+2025-07-19 17:18:46,user_3,swipe,0.5348,False,31,7,medium,security_challenge,0
+2025-07-19 17:18:46,user_3,swipe,0.3125,False,57,12,low,none,0
+2025-07-19 17:18:47,user_2,typing,0.9954,False,73,12,high,force_logout,0
+2025-07-19 17:18:47,user_3,swipe,0.8544,False,85,14,high,force_logout,0
+2025-07-19 17:18:48,user_1,swipe,0.731,False,43,15,medium,none,0
+2025-07-19 17:18:48,user_1,tap,0.5818,False,91,6,medium,security_challenge,0

@@ -342,7 +342,7 @@ const ModelScoresPage = () => {
             <CardTitle className="text-sm">Total Records</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total_records}</div>
+            <div className="text-2xl font-bold">{stats?.total_records || 0}</div>
             <p className="text-xs text-muted-foreground">
               {error ? "Using mock data" : "From CSV file"}
             </p>
@@ -355,7 +355,7 @@ const ModelScoresPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {stats.high_risk_count}
+              {stats?.high_risk_count || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Requiring action
@@ -369,7 +369,7 @@ const ModelScoresPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.unique_users}
+              {stats?.unique_users || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Currently monitored
@@ -383,7 +383,7 @@ const ModelScoresPage = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.avg_anomaly_score.toFixed(3)}
+              {stats?.avg_anomaly_score !== undefined ? stats.avg_anomaly_score.toFixed(3) : '0.000'}
             </div>
             <p className="text-xs text-muted-foreground">
               Across all models

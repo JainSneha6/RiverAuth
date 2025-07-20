@@ -77,7 +77,7 @@ export default function SwipeDataPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams({
-        limit: '200',
+        limit: '10000', // Show all data
         ...(userId && { user_id: userId })
       });
 

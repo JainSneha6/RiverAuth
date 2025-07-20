@@ -6,10 +6,13 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from user_model_manager import process_behavior_stream, get_user_stats, model_manager
-from model_scores_logger import log_model_score, get_system_analytics
+from model_score_logger import RealTimeModelScoreLogger
 import json
 import asyncio
 from datetime import datetime
+
+# Initialize the global model score logger
+model_score_logger = RealTimeModelScoreLogger(csv_file="../model_scores.csv")
 
 class RealTimeModelProcessor:
     """
@@ -27,6 +30,46 @@ class RealTimeModelProcessor:
     def add_alert_callback(self, callback):
         """Add callback function for security alerts"""
         self.alert_callbacks.append(callback)
+    
+    def log_model_scores(self, result):
+        """Log all model scores to CSV for real-time dashboard updates"""
+        try:
+            user_id = result.get("user_id")
+            timestamp = result.get("timestamp")
+            session_duration = result.get("session_duration", 0)
+            
+            # Log each model's score
+            for model_type, model_result in result["models"].items():
+                # Determine risk level based on score
+                score = model_result["anomaly_score"]
+                if score > 0.8:
+                    risk_level = "high"
+                    action_taken = "force_logout" if score > 0.9 else "require_additional_auth"
+                elif score > 0.5:
+                    risk_level = "medium"
+                    action_taken = "security_challenge"
+                else:
+                    risk_level = "low"
+                    action_taken = "none"
+                
+                # Log to CSV
+                model_score_logger.log_score(
+                    user_id=user_id,
+                    model_type=model_type,
+                    anomaly_score=score,
+                    is_warmup=model_result.get("is_warmup", False),
+                    samples_count=model_result.get("samples_count", 0),
+                    features_processed=len(model_result.get("features_processed", [])),
+                    risk_level=risk_level,
+                    action_taken=action_taken,
+                    session_duration=session_duration
+                )
+            
+            print(f"✅ Logged model scores for user {user_id} to CSV")
+            
+        except Exception as e:
+            print(f"❌ Error logging model scores: {e}")
+    
     
     def process_websocket_message(self, message_data):
         """
@@ -48,6 +91,9 @@ class RealTimeModelProcessor:
             
             if not result:
                 return {"error": "Failed to process user session"}
+            
+            # Log model scores to CSV for dashboard consumption
+            self.log_model_scores(result)
             
             # Check for anomalies and generate alerts
             alerts = self.check_for_anomalies(result)
@@ -115,7 +161,17 @@ class RealTimeModelProcessor:
                             'threshold_exceeded': threshold
                         }
                         
-                        log_model_score(result["user_id"], f"{model_type}_alert", score_data, alert_info)
+                        model_score_logger.log_score(
+                            user_id=result["user_id"],
+                            model_type=f"{model_type}",
+                            anomaly_score=score,
+                            is_warmup=model_result["is_warmup"],
+                            samples_count=model_result.get("samples_count", 0),
+                            features_processed=len(model_result.get("features_processed", [])),
+                            risk_level=severity,
+                            action_taken="security_alert",
+                            session_duration=result.get("session_duration", 0)
+                        )
                     except Exception as e:
                         print(f"Error logging alert: {e}")
         
@@ -240,3 +296,19 @@ if __name__ == "__main__":
             print(f"Overall Risk: {risk_profile['overall_risk']}")
             for model_type, status in risk_profile['model_status'].items():
                 print(f"  {model_type}: {status['risk_level']} (avg score: {status['avg_score']:.3f})")
+
+# Create global processor instance for convenience
+_processor = RealTimeModelProcessor()
+
+# Convenience functions for easy import by TCP server
+def process_websocket_data(message_data):
+    """Process websocket data and automatically log scores to CSV"""
+    return _processor.process_websocket_message(message_data)
+
+def get_user_risk_assessment(user_id):
+    """Get user risk assessment"""
+    return _processor.get_user_risk_profile(user_id)
+
+def add_security_alert_handler(callback):
+    """Add security alert callback handler"""
+    _processor.add_alert_callback(callback)

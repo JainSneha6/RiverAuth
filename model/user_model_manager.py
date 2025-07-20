@@ -100,6 +100,8 @@ class ContinuousHalfSpaceTrees(AnomalyDetector):
         except Exception as e:
             # Fallback to binary score if statistical calculation fails
             return float(binary_score)
+
+# Additional imports
 from scipy.stats import entropy
 from scipy.spatial.distance import mahalanobis
 import logging
@@ -107,13 +109,30 @@ import time
 
 # Import the real-time model scores logger
 try:
-    from model_score_logger import log_model_score, get_latest_stats
-except ImportError:
+    from model_score_logger import RealTimeModelScoreLogger
+    # Initialize the real-time logger
+    csv_file_path = "../model_scores.csv"
+    model_score_logger = RealTimeModelScoreLogger(csv_file=csv_file_path)
+    
+    def log_model_score(*args, **kwargs):
+        """Wrapper function for logging model scores"""
+        return model_score_logger.log_score(*args, **kwargs)
+        
+    def get_latest_stats():
+        """Get latest statistics from the logger"""
+        return model_score_logger.get_latest_stats() if hasattr(model_score_logger, 'get_latest_stats') else {}
+        
+    LOGGER_AVAILABLE = True
+    print(f"✅ Real-time model score logger initialized: {csv_file_path}")
+    
+except ImportError as e:
     # Fallback if logger not available
+    print(f"⚠️ Model score logger not available: {e}")
     def log_model_score(*args, **kwargs):
         pass
     def get_latest_stats():
         return {}
+    LOGGER_AVAILABLE = False
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

@@ -1,0 +1,17 @@
+{
+  "typing": {
+    "samples": 1,
+    "last_updated": "2025-07-20 12:45:11.109103",
+    "anomaly_scores": []
+  },
+  "tap": {
+    "samples": 1,
+    "last_updated": "2025-07-20 12:45:10.057024",
+    "anomaly_scores": []
+  },
+  "swipe": {
+    "samples": 1,
+    "last_updated": "2025-07-20 12:45:12.119522",
+    "anomaly_scores": []
+  }
+}

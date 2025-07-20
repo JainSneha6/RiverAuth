@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
         total: data.length,
         totalPages: Math.ceil(data.length / limit)
       },
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: '2024-01-01T00:00:00.000Z',
       source: 'real_csv_data'
     });
 
@@ -120,24 +120,28 @@ export async function GET(request: NextRequest) {
 function calculateStatistics(data: any[]) {
   if (data.length === 0) {
     return {
-      totalScores: 0,
-      averageAnomalyScore: 0,
-      riskDistribution: { low: 0, medium: 0, high: 0 },
-      modelTypeDistribution: { typing: 0, swipe: 0, tap: 0 },
-      actionsTaken: {},
-      uniqueUsers: 0,
-      recentActivity: []
+      total_records: 0,
+      filtered_records: 0,
+      high_risk_count: 0,
+      unique_users: 0,
+      avg_anomaly_score: 0,
+      model_counts: { typing: 0, tap: 0, swipe: 0 },
+      risk_distribution: { low: 0, medium: 0, high: 0 },
+      actions_taken: {},
+      recent_activity: []
     };
   }
   
   const stats = {
-    totalScores: data.length,
-    averageAnomalyScore: 0,
-    riskDistribution: { low: 0, medium: 0, high: 0 },
-    modelTypeDistribution: { typing: 0, swipe: 0, tap: 0 },
-    actionsTaken: {} as Record<string, number>,
-    uniqueUsers: new Set(data.map(d => d.user_id)).size,
-    recentActivity: data.slice(0, 10)
+    total_records: data.length,
+    filtered_records: data.length,
+    high_risk_count: 0,
+    unique_users: new Set(data.map(d => d.user_id)).size,
+    avg_anomaly_score: 0,
+    model_counts: { typing: 0, tap: 0, swipe: 0 },
+    risk_distribution: { low: 0, medium: 0, high: 0 },
+    actions_taken: {} as Record<string, number>,
+    recent_activity: data.slice(0, 10)
   };
   
   let totalAnomaly = 0;
@@ -146,26 +150,29 @@ function calculateStatistics(data: any[]) {
     // Anomaly score average
     totalAnomaly += record.anomaly_score || 0;
     
-    // Risk distribution
-    const riskLevel = record.risk_level as keyof typeof stats.riskDistribution;
-    if (riskLevel && stats.riskDistribution.hasOwnProperty(riskLevel)) {
-      stats.riskDistribution[riskLevel]++;
+    // Risk distribution and high risk count
+    const riskLevel = record.risk_level as keyof typeof stats.risk_distribution;
+    if (riskLevel && stats.risk_distribution.hasOwnProperty(riskLevel)) {
+      stats.risk_distribution[riskLevel]++;
+      if (riskLevel === 'high') {
+        stats.high_risk_count++;
+      }
     }
     
     // Model type distribution
-    const modelType = record.model_type as keyof typeof stats.modelTypeDistribution;
-    if (modelType && stats.modelTypeDistribution.hasOwnProperty(modelType)) {
-      stats.modelTypeDistribution[modelType]++;
+    const modelType = record.model_type as keyof typeof stats.model_counts;
+    if (modelType && stats.model_counts.hasOwnProperty(modelType)) {
+      stats.model_counts[modelType]++;
     }
     
     // Actions taken
     const action = record.action_taken;
     if (action) {
-      stats.actionsTaken[action] = (stats.actionsTaken[action] || 0) + 1;
+      stats.actions_taken[action] = (stats.actions_taken[action] || 0) + 1;
     }
   });
   
-  stats.averageAnomalyScore = data.length > 0 ? totalAnomaly / data.length : 0;
+  stats.avg_anomaly_score = data.length > 0 ? totalAnomaly / data.length : 0;
   
   return stats;
 }
@@ -178,25 +185,27 @@ function generateMockData() {
   const riskLevels = ['low', 'medium', 'high'];
   const actions = ['none', 'security_challenge', 'block_session', 'require_mfa'];
   
+  // Use deterministic values instead of Math.random() to prevent hydration errors
   for (let i = 0; i < 50; i++) {
-    const anomalyScore = Math.random();
+    const anomalyScore = ((i * 7) % 100) / 100; // Deterministic 0-1 value
     const riskLevel = anomalyScore < 0.3 ? 'low' : anomalyScore < 0.7 ? 'medium' : 'high';
     const action = riskLevel === 'high' ? 'security_challenge' : riskLevel === 'medium' ? 'none' : 'none';
     
-    const date = new Date();
-    date.setMinutes(date.getMinutes() - i * 5);
+    // Use deterministic timestamp
+    const baseTime = new Date('2024-01-01T00:00:00Z');
+    baseTime.setMinutes(baseTime.getMinutes() + (i * 5)); // Increment by 5 minutes for each record
     
     mockData.push({
-      timestamp: date.toISOString().slice(0, 19).replace('T', ' '),
-      user_id: users[Math.floor(Math.random() * users.length)],
-      model_type: modelTypes[Math.floor(Math.random() * modelTypes.length)],
+      timestamp: baseTime.toISOString().slice(0, 19).replace('T', ' '),
+      user_id: users[i % users.length],
+      model_type: modelTypes[i % modelTypes.length],
       anomaly_score: parseFloat(anomalyScore.toFixed(4)),
-      is_warmup: Math.random() > 0.7,
-      samples_count: Math.floor(Math.random() * 100) + 1,
-      features_processed: Math.floor(Math.random() * 15) + 5,
+      is_warmup: (i % 10) < 3, // Deterministic boolean
+      samples_count: 1 + ((i * 11) % 100),
+      features_processed: 5 + ((i * 13) % 15),
       risk_level: riskLevel,
       action_taken: action,
-      session_duration: Math.floor(Math.random() * 3000) + 500
+      session_duration: 500 + ((i * 17) % 3000)
     });
   }
   
