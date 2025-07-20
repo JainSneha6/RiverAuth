@@ -7,6 +7,7 @@ import { useSecurityMonitor } from '../hooks/useSecurityMonitor';
 import { useWebSocket } from '../hooks/useWebSocket';
 import SecurityChallengeModal from './SecurityChallengeModal';
 import banner from '../../public/Banner-nobg.png'
+import SecurityChallengeModal2 from './SecModal2';
 
 const TopMenu = () => {
   const history = useHistory();
@@ -149,8 +150,8 @@ const TopMenu = () => {
       </div>
 
       {/* Security Challenge Modal */}
-      <SecurityChallengeModal
-        isOpen={securityChallenge.isActive}
+      <SecurityChallengeModal2
+        isOpen={true}
         questions={securityChallenge.questions}
         retryCount={securityChallenge.retryCount}
         isProcessing={isProcessingChallenge}
