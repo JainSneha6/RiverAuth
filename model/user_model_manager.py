@@ -469,7 +469,7 @@ class UserBehaviorModelManager:
         if user_id == "unknown":
             logger.warning("No user_id found in session data")
             return None
-        
+
         results = {
             "user_id": user_id,
             "timestamp": datetime.now(),

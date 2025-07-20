@@ -12,16 +12,16 @@ import SecurityChallengeModal2 from './SecModal2';
 const TopMenu = () => {
   const history = useHistory();
   const { logout, isAuthenticated, user } = useAuth();
-  const { 
-    currentAlert, 
-    securityChallenge, 
+  const {
+    currentAlert,
+    securityChallenge,
     isProcessingChallenge,
     submitSecurityAnswers,
     dismissChallenge,
     processWebSocketMessage,
-    clearAlert 
+    clearAlert
   } = useSecurityMonitor();
-  
+
   // Get WebSocket connection for security monitoring
   const { lastMessage, send: sendWebSocket } = useWebSocket('ws://localhost:8081');
 
@@ -64,10 +64,10 @@ const TopMenu = () => {
         })),
         timestamp: Date.now()
       };
-      
+
       console.log('🔐 Sending security answers to WebSocket server');
       sendWebSocket(websocketData);
-      
+
       // The response will be handled by processWebSocketMessage
       return true;
     } catch (error) {
@@ -87,7 +87,7 @@ const TopMenu = () => {
 
   const getRiskStatusIndicator = () => {
     if (!currentAlert) return null;
-    
+
     const getRiskColor = () => {
       if (currentAlert.score >= 0.95) return 'text-red-600 bg-red-100 border-red-300';
       if (currentAlert.score >= 0.8) return 'text-yellow-600 bg-yellow-100 border-yellow-300';
@@ -102,9 +102,9 @@ const TopMenu = () => {
 
     return (
       <div className={`flex items-center gap-1 border rounded-full px-2 py-1 ${getRiskColor()}`}>
-        <IonIcon 
-          icon={getRiskIcon()} 
-          className="text-sm animate-pulse" 
+        <IonIcon
+          icon={getRiskIcon()}
+          className="text-sm animate-pulse"
         />
         <span className="text-xs font-medium">
           Risk: {(currentAlert.score * 100).toFixed(0)}%
@@ -116,32 +116,32 @@ const TopMenu = () => {
   return (
     <>
       <div className='flex justify-between items-center border-black w-full text-black'>
-          <IonIcon 
-            icon={menu} 
-            className="text-4xl text-black cursor-pointer" 
-            onClick={() => (document.querySelector('ion-menu') as any)?.open()} 
-          />
-          <img src={banner} className='h-12 w-auto'/>
-        
+        <IonIcon
+          icon={menu}
+          className="text-4xl text-black cursor-pointer"
+          onClick={() => (document.querySelector('ion-menu') as any)?.open()}
+        />
+        <img src={banner} className='h-12 w-auto' />
+
         {/* Authentication Status Indicator */}
         <div className='flex items-center gap-2'>
           {/* Risk Status Indicator */}
           {getRiskStatusIndicator()}
-          
+
           {!isAuthenticated ? (
             <div className='flex items-center gap-1 bg-red-100 border border-red-300 rounded-full px-3 py-1'>
-              <IonIcon 
-                icon={personCircleOutline} 
-                className="text-lg text-red-600" 
+              <IonIcon
+                icon={personCircleOutline}
+                className="text-lg text-red-600"
               />
               <span className='text-sm text-red-600 font-medium'>Not Logged In</span>
             </div>
           ) : (
             <div className='flex items-center gap-2'>
               <div className='flex items-center gap-1 bg-green-100 border border-green-300 rounded-full px-3 py-1'>
-                <IonIcon 
-                  icon={checkmarkCircle} 
-                  className="text-lg text-green-600" 
+                <IonIcon
+                  icon={checkmarkCircle}
+                  className="text-lg text-green-600"
                 />
               </div>
             </div>
@@ -151,7 +151,7 @@ const TopMenu = () => {
 
       {/* Security Challenge Modal */}
       <SecurityChallengeModal2
-        isOpen={true}
+        isOpen={securityChallenge.isActive}
         questions={securityChallenge.questions}
         retryCount={securityChallenge.retryCount}
         isProcessing={isProcessingChallenge}
