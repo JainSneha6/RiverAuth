@@ -87,7 +87,7 @@ const SecurityChallengeModal: React.FC<SecurityChallengeModalProps> = ({
   const allQuestionsAnswered = answers.every(answer => answer.trim().length > 0);
 
   return (
-    <IonModal isOpen={isOpen} backdropDismiss={false}>
+    <IonModal isOpen={isOpen} backdropDismiss={true}>
       <IonHeader>
         <IonToolbar color="warning">
           <IonTitle className="flex items-center gap-2">
